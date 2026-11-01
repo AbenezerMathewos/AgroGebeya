@@ -46,7 +46,7 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending_payment', 'escrow_held', 'released_to_farmer', 'refunded'],
       default: 'pending_payment',
     },
-    paymentReference: { type: String, default: '', trim: true }, // Chapa tx_ref
+    paymentReference: { type: String, trim: true }, // Chapa tx_ref (no default to allow sparse index)
     chapaCheckoutUrl: { type: String, default: '' },              // Chapa redirect URL
     isPaid:           { type: Boolean, default: false },
     paidAt:           { type: Date },
