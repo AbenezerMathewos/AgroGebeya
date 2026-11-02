@@ -32,12 +32,13 @@ function StatusBadge({ status, paymentStatus }) {
 export default function MyOrders() {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const isFarmer = user?.role === 'farmer' || user?.role === 'cooperative';
+  const isFarmerRole = user?.role === 'farmer' || user?.role === 'cooperative';
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [viewType, setViewType] = useState('all'); // 'all' | 'purchases' | 'sales'
   const [activePaymentOrder, setActivePaymentOrder] = useState(null);
 
   const loadOrders = () => {
@@ -65,24 +66,99 @@ export default function MyOrders() {
     }
   };
 
-  const visibleOrders = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
+  const currentUserId = (user?._id || user?.id)?.toString();
+
+  const typedOrders = orders.filter((o) => {
+    const isBuyer =
+      o.isBuyer !== undefined
+        ? o.isBuyer
+        : Boolean(currentUserId && (o.buyer?._id || o.buyer)?.toString() === currentUserId);
+    if (viewType === 'purchases') return isBuyer;
+    if (viewType === 'sales') return !isBuyer;
+    return true;
+  });
+
+  const visibleOrders = filter === 'all' ? typedOrders : typedOrders.filter((o) => o.status === filter);
+
+  const purchaseCount = orders.filter((o) =>
+    o.isBuyer !== undefined
+      ? o.isBuyer
+      : Boolean(currentUserId && (o.buyer?._id || o.buyer)?.toString() === currentUserId)
+  ).length;
+  const salesCount = orders.filter((o) =>
+    o.isBuyer !== undefined
+      ? !o.isBuyer
+      : Boolean(currentUserId && (o.buyer?._id || o.buyer)?.toString() !== currentUserId)
+  ).length;
 
   return (
     <div className="orders-page">
       <div className="page-intro">
-        <span className="eyebrow">{isFarmer ? 'Incoming Produce Requests' : 'My Purchase Requests'}</span>
-        <h1>{isFarmer ? 'Manage Buyer Orders & Dispatches' : 'Track Orders & Escrow Payments'}</h1>
+        <span className="eyebrow">Transaction & Escrow Hub</span>
+        <h1>Order Tracking & Dispatches</h1>
         <p>
-          {isFarmer
-            ? 'Buyers who requested your harvest. Accept orders, ship via freight, and receive guaranteed Telebirr payment.'
-            : 'Track the real-time status of your crop orders with 100% Telebirr escrow protection.'}
+          Track real-time orders, manage escrow disbursements, dispatch freight, and confirm deliveries with 100% buyer & farmer protection.
         </p>
+      </div>
+
+      {/* Role-Agnostic Transaction Type Switcher */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setViewType('all')}
+          style={{
+            padding: '0.45rem 1rem',
+            borderRadius: '20px',
+            border: 'none',
+            background: viewType === 'all' ? '#10b981' : 'rgba(255,255,255,0.06)',
+            color: viewType === 'all' ? '#ffffff' : 'inherit',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+          }}
+        >
+          📦 All Orders ({orders.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewType('purchases')}
+          style={{
+            padding: '0.45rem 1rem',
+            borderRadius: '20px',
+            border: 'none',
+            background: viewType === 'purchases' ? '#10b981' : 'rgba(255,255,255,0.06)',
+            color: viewType === 'purchases' ? '#ffffff' : 'inherit',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+          }}
+        >
+          🛒 My Purchases ({purchaseCount})
+        </button>
+        {isFarmerRole && (
+          <button
+            type="button"
+            onClick={() => setViewType('sales')}
+            style={{
+              padding: '0.45rem 1rem',
+              borderRadius: '20px',
+              border: 'none',
+              background: viewType === 'sales' ? '#10b981' : 'rgba(255,255,255,0.06)',
+              color: viewType === 'sales' ? '#ffffff' : 'inherit',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+            }}
+          >
+            🌾 Orders Received / Sales ({salesCount})
+          </button>
+        )}
       </div>
 
       <div className="admin-tabs">
         {['all', 'pending', 'accepted', 'in_transit', 'completed'].map((tab) => (
           <button key={tab} onClick={() => setFilter(tab)} disabled={filter === tab}>
-            {tab === 'all' ? 'All Orders' : STATUS_LABEL[tab] || tab}
+            {tab === 'all' ? 'All Statuses' : STATUS_LABEL[tab] || tab}
           </button>
         ))}
       </div>
@@ -93,142 +169,165 @@ export default function MyOrders() {
         <p className="page-loading">Loading order requests...</p>
       ) : visibleOrders.length === 0 ? (
         <div className="empty-card">
-          {isFarmer
-            ? "No incoming requests yet. Once buyers order your produce, they'll appear here."
-            : "You haven't placed any crop requests yet. Browse the marketplace to find fresh produce."}
+          {viewType === 'purchases'
+            ? "You haven't placed any crop requests yet. Browse the marketplace to order fresh commodities."
+            : viewType === 'sales'
+            ? "No incoming requests for your listings yet. Once buyers order your harvest, they will appear here."
+            : "No orders found for this status."}
         </div>
       ) : (
         <div className="orders-list">
-          {visibleOrders.map((order) => (
-            <div className="order-card" key={order._id}>
-              <ProductThumb product={order.product} size={64} />
-              <div className="order-card-main">
-                <div className="order-card-heading">
-                  <Link to={`/products/${order.product?._id}`}>
-                    {order.product?.title || 'Produce Listing'}
-                  </Link>
-                  <StatusBadge status={order.status} paymentStatus={order.paymentStatus} />
+          {visibleOrders.map((order) => {
+            const isOrderBuyer =
+              order.isBuyer !== undefined
+                ? order.isBuyer
+                : String(order.buyer?._id || order.buyer) === String(user?._id);
+
+            return (
+              <div className="order-card" key={order._id}>
+                <ProductThumb product={order.product} size={64} />
+                <div className="order-card-main">
+                  <div className="order-card-heading">
+                    <Link to={`/products/${order.product?._id}`}>
+                      {order.product?.title || 'Produce Listing'}
+                    </Link>
+                    <StatusBadge status={order.status} paymentStatus={order.paymentStatus} />
+                  </div>
+
+                  {/* Visual Escrow & Order Progress Stepper */}
+                  <div className="escrow-stepper">
+                    <div className={`step-node ${order.status !== 'declined' ? 'active' : ''}`}>
+                      <span className="step-num">1</span>
+                      <span className="step-lbl">Requested</span>
+                    </div>
+                    <div className={`step-line ${['accepted', 'in_transit', 'completed'].includes(order.status) || order.paymentStatus === 'escrow_held' ? 'active' : ''}`} />
+                    <div className={`step-node ${['accepted', 'in_transit', 'completed'].includes(order.status) || order.paymentStatus === 'escrow_held' ? 'active' : ''}`}>
+                      <span className="step-num">2</span>
+                      <span className="step-lbl">Escrow Held</span>
+                    </div>
+                    <div className={`step-line ${['in_transit', 'completed'].includes(order.status) ? 'active' : ''}`} />
+                    <div className={`step-node ${['in_transit', 'completed'].includes(order.status) ? 'active' : ''}`}>
+                      <span className="step-num">3</span>
+                      <span className="step-lbl">In Transit</span>
+                    </div>
+                    <div className={`step-line ${order.status === 'completed' ? 'active' : ''}`} />
+                    <div className={`step-node ${order.status === 'completed' ? 'active' : ''}`}>
+                      <span className="step-num">4</span>
+                      <span className="step-lbl">Delivered</span>
+                    </div>
+                  </div>
+
+                  <div className="order-details-meta">
+                    <p>
+                      {isOrderBuyer
+                        ? `👨‍🌾 Producer / Seller: ${order.farmer?.name || 'Farmer'}${order.farmer?.cooperativeName ? ` (${order.farmer.cooperativeName})` : ''}`
+                        : `👤 Buyer: ${order.buyer?.name || 'Buyer'}`} &middot;{' '}
+                      <strong>{order.quantity} {order.unit}</strong> &middot;{' '}
+                      <span className="text-highlight">Total: {order.totalPrice ? order.totalPrice.toLocaleString() : (order.quantity * (order.product?.price || 0)).toLocaleString()} ETB</span>
+                    </p>
+                    <p>
+                      💳 Method: <strong>{order.paymentMethod?.toUpperCase()}</strong> &middot;{' '}
+                      {order.escrowTransactionId && <span className="text-code">Tx: {order.escrowTransactionId} &middot; </span>}
+                      📞 Contact: {order.contactPhone}
+                    </p>
+                    {order.deliveryAddress?.city && (
+                      <p>📍 Delivery Destination: {order.deliveryAddress.city} {order.deliveryAddress.specificAddress ? `(${order.deliveryAddress.specificAddress})` : ''}</p>
+                    )}
+                    {order.note && <p className="order-card-note">"{order.note}"</p>}
+                  </div>
+
+                  {/* Quick Voucher Button */}
+                  <div className="order-receipt-quick-row">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setActivePaymentOrder(order)}
+                    >
+                      📜 {order.paymentStatus === 'escrow_held' || order.paymentStatus === 'released_to_farmer' ? 'View Escrow Voucher' : '⚡ Complete Escrow Payment'}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Visual Escrow & Order Progress Stepper */}
-                <div className="escrow-stepper">
-                  <div className={`step-node ${order.status !== 'declined' ? 'active' : ''}`}>
-                    <span className="step-num">1</span>
-                    <span className="step-lbl">Requested</span>
+                {/* Seller Actions (if current user is the seller/farmer) */}
+                {!isOrderBuyer && order.status === 'pending' && (
+                  <div className="order-card-actions">
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={busyId === order._id}
+                      onClick={() => handleStatusChange(order._id, 'accepted')}
+                    >
+                      Accept Order
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      disabled={busyId === order._id}
+                      onClick={() => handleStatusChange(order._id, 'declined')}
+                    >
+                      Decline
+                    </button>
                   </div>
-                  <div className={`step-line ${['accepted', 'in_transit', 'completed'].includes(order.status) || order.paymentStatus === 'escrow_held' ? 'active' : ''}`} />
-                  <div className={`step-node ${['accepted', 'in_transit', 'completed'].includes(order.status) || order.paymentStatus === 'escrow_held' ? 'active' : ''}`}>
-                    <span className="step-num">2</span>
-                    <span className="step-lbl">Escrow Held</span>
-                  </div>
-                  <div className={`step-line ${['in_transit', 'completed'].includes(order.status) ? 'active' : ''}`} />
-                  <div className={`step-node ${['in_transit', 'completed'].includes(order.status) ? 'active' : ''}`}>
-                    <span className="step-num">3</span>
-                    <span className="step-lbl">In Transit</span>
-                  </div>
-                  <div className={`step-line ${order.status === 'completed' ? 'active' : ''}`} />
-                  <div className={`step-node ${order.status === 'completed' ? 'active' : ''}`}>
-                    <span className="step-num">4</span>
-                    <span className="step-lbl">Delivered</span>
-                  </div>
-                </div>
+                )}
 
-                <div className="order-details-meta">
-                  <p>
-                    {isFarmer ? `👤 Buyer: ${order.buyer?.name}` : `👨‍🌾 Producer: ${order.farmer?.name}`} &middot;{' '}
-                    <strong>{order.quantity} {order.unit}</strong> &middot;{' '}
-                    <span className="text-highlight">Total: {order.totalPrice ? order.totalPrice.toLocaleString() : (order.quantity * (order.product?.price || 0)).toLocaleString()} ETB</span>
-                  </p>
-                  <p>
-                    💳 Method: <strong>{order.paymentMethod?.toUpperCase()}</strong> &middot;{' '}
-                    {order.escrowTransactionId && <span className="text-code">Tx: {order.escrowTransactionId} &middot; </span>}
-                    📞 Contact: {order.contactPhone}
-                  </p>
-                  {order.deliveryAddress?.city && (
-                    <p>📍 Delivery Destination: {order.deliveryAddress.city} {order.deliveryAddress.specificAddress ? `(${order.deliveryAddress.specificAddress})` : ''}</p>
-                  )}
-                  {order.note && <p className="order-card-note">"{order.note}"</p>}
-                </div>
+                {!isOrderBuyer && order.status === 'accepted' && (
+                  <div className="order-card-actions">
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={busyId === order._id}
+                      onClick={() => handleStatusChange(order._id, 'in_transit')}
+                    >
+                      Dispatch & Ship 🚚
+                    </button>
+                  </div>
+                )}
 
-                {/* Quick Voucher Button */}
-                <div className="order-receipt-quick-row">
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setActivePaymentOrder(order)}
-                  >
-                    📜 {order.paymentStatus === 'escrow_held' || order.paymentStatus === 'released_to_farmer' ? 'View Escrow Voucher' : '⚡ Complete Escrow Payment'}
-                  </button>
-                </div>
+                {!isOrderBuyer && order.status === 'in_transit' && (
+                  <div className="order-card-actions">
+                    <span className="badge badge-escrow">Waiting for buyer receipt...</span>
+                  </div>
+                )}
+
+                {!isOrderBuyer && order.status === 'completed' && (
+                  <div className="order-card-actions">
+                    <span className="badge badge-accepted">Delivered & Funds Released 💰</span>
+                  </div>
+                )}
+
+                {/* Buyer Actions (if current user placed this order, whether farmer, buyer, or coop) */}
+                {isOrderBuyer && (order.status === 'in_transit' || order.status === 'accepted') && (
+                  <div className="order-card-actions">
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={busyId === order._id}
+                      onClick={() => handleStatusChange(order._id, 'completed')}
+                    >
+                      ✅ {t('confirmReceipt')} & Release Escrow
+                    </button>
+                  </div>
+                )}
+
+                {isOrderBuyer && order.status === 'pending' && (
+                  <div className="order-card-actions">
+                    <span className="badge badge-pending">Waiting for producer acceptance...</span>
+                  </div>
+                )}
+
+                {isOrderBuyer && order.status === 'completed' && (
+                  <div className="order-card-actions">
+                    {order.reviewed ? (
+                      <span className="badge badge-accepted">Reviewed ⭐</span>
+                    ) : (
+                      <ReviewForm
+                        order={order}
+                        onSubmitted={() =>
+                          setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, reviewed: true } : o)))
+                        }
+                      />
+                    )}
+                  </div>
+                )}
               </div>
-
-              {/* Farmer Actions */}
-              {isFarmer && order.status === 'pending' && (
-                <div className="order-card-actions">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={busyId === order._id}
-                    onClick={() => handleStatusChange(order._id, 'accepted')}
-                  >
-                    Accept Order
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    disabled={busyId === order._id}
-                    onClick={() => handleStatusChange(order._id, 'declined')}
-                  >
-                    Decline
-                  </button>
-                </div>
-              )}
-
-              {isFarmer && order.status === 'accepted' && (
-                <div className="order-card-actions">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={busyId === order._id}
-                    onClick={() => handleStatusChange(order._id, 'in_transit')}
-                  >
-                    Dispatch & Ship 🚚
-                  </button>
-                </div>
-              )}
-
-              {isFarmer && order.status === 'in_transit' && (
-                <div className="order-card-actions">
-                  <span className="badge badge-escrow">Waiting for buyer receipt...</span>
-                </div>
-              )}
-
-              {/* Buyer Actions: Confirm delivery & Release escrow funds */}
-              {!isFarmer && (order.status === 'in_transit' || order.status === 'accepted') && (
-                <div className="order-card-actions">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={busyId === order._id}
-                    onClick={() => handleStatusChange(order._id, 'completed')}
-                  >
-                    ✅ {t('confirmReceipt')}
-                  </button>
-                </div>
-              )}
-
-              {!isFarmer && order.status === 'completed' && (
-                <div className="order-card-actions">
-                  {order.reviewed ? (
-                    <span className="badge badge-accepted">Reviewed ⭐</span>
-                  ) : (
-                    <ReviewForm
-                      order={order}
-                      onSubmitted={() =>
-                        setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, reviewed: true } : o)))
-                      }
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

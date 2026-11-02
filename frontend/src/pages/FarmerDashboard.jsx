@@ -60,9 +60,12 @@ export default function FarmerDashboard() {
     loadData();
   }, []);
 
-  const myPurchases = orders.filter(
-    (o) => o.isBuyer || String(o.buyer?._id || o.buyer) === String(user?._id)
-  );
+  const currentUserId = (user?._id || user?.id)?.toString();
+  const myPurchases = orders.filter((o) => {
+    if (o.isBuyer) return true;
+    const buyerId = (o.buyer?._id || o.buyer)?.toString();
+    return Boolean(currentUserId && buyerId && buyerId === currentUserId);
+  });
 
   const handleReleaseEscrow = async (orderId) => {
     if (!window.confirm('Confirm that you have received and inspected this produce? This will release the escrow payout to the seller.')) return;
