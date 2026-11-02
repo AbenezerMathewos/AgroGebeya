@@ -471,8 +471,9 @@ export default function FarmerDashboard() {
         >
           <div
             style={{
-              background: 'var(--card-bg, #0f172a)',
-              border: '1px solid var(--border-color, #334155)',
+              background: '#0f172a',
+              color: '#f8fafc',
+              border: '1px solid #334155',
               borderRadius: '16px',
               width: '100%',
               maxWidth: '540px',
@@ -481,33 +482,33 @@ export default function FarmerDashboard() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem' }}>🤝 Pledge Produce to Bulk Buyer Pool</h3>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#f8fafc' }}>🤝 Pledge Produce to Bulk Buyer Pool</h3>
               <button
                 onClick={() => setShowJoinModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.4rem', color: 'var(--slate-400)', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', fontSize: '1.4rem', color: '#94a3b8', cursor: 'pointer' }}
               >
                 ✕
               </button>
             </div>
 
             {openPools.length === 0 ? (
-              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--slate-400)' }}>
+              <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>
                 No open buyer pools available right now. Check back soon!
               </div>
             ) : (
               <form onSubmit={handleJoinPool}>
                 <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--slate-300)' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: '#cbd5e1' }}>
                     Select Open Bulk Contract *
                   </label>
                   <select
                     value={selectedPoolId}
                     onChange={(e) => setSelectedPoolId(e.target.value)}
                     required
-                    style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '8px', border: '1px solid #475569', background: '#1e293b', color: 'inherit' }}
+                    style={{ width: '100%', padding: '0.65rem 0.75rem', borderRadius: '8px', border: '1px solid #475569', background: '#1e293b', color: '#f8fafc' }}
                   >
                     {openPools.map((p) => (
-                      <option key={p._id} value={p._id}>
+                      <option key={p._id} value={p._id} style={{ background: '#1e293b', color: '#f8fafc' }}>
                         {p.cropName} — Needed: {p.remainingCapacity ?? (p.targetQuantity - p.currentQuantity)} {p.unit} @ {p.unitPrice} ETB/{p.unit} ({p.deliveryRegion})
                       </option>
                     ))}
@@ -515,16 +516,16 @@ export default function FarmerDashboard() {
                 </div>
 
                 {selectedPool && (
-                  <div style={{ padding: '0.875rem', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                    <div><strong>Buyer:</strong> {selectedPool.buyer?.name} {selectedPool.buyer?.cooperativeName && `(${selectedPool.buyer.cooperativeName})`}</div>
-                    <div><strong>Contract Rate:</strong> {formatPrice(selectedPool.unitPrice)} per {selectedPool.unit || 'Quintal'}</div>
-                    <div><strong>Remaining Capacity Needed:</strong> {selectedPool.remainingCapacity ?? (selectedPool.targetQuantity - selectedPool.currentQuantity)} {selectedPool.unit || 'Quintal'}</div>
+                  <div style={{ padding: '0.875rem', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.3)', marginBottom: '1rem', fontSize: '0.85rem', color: '#e2e8f0', lineHeight: '1.6' }}>
+                    <div><strong style={{ color: '#38bdf8' }}>Buyer:</strong> {selectedPool.buyer?.name} {selectedPool.buyer?.cooperativeName && `(${selectedPool.buyer.cooperativeName})`}</div>
+                    <div><strong style={{ color: '#38bdf8' }}>Contract Rate:</strong> {formatPrice(selectedPool.unitPrice)} per {selectedPool.unit || 'Quintal'}</div>
+                    <div><strong style={{ color: '#38bdf8' }}>Remaining Capacity Needed:</strong> {selectedPool.remainingCapacity ?? (selectedPool.targetQuantity - selectedPool.currentQuantity)} {selectedPool.unit || 'Quintal'}</div>
                   </div>
                 )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--slate-300)' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: '#cbd5e1' }}>
                       Quantity to Pledge ({selectedPool?.unit || 'Quintals'}) *
                     </label>
                     <input
@@ -535,22 +536,22 @@ export default function FarmerDashboard() {
                       placeholder="e.g. 10"
                       value={contribQty}
                       onChange={(e) => setContribQty(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #475569', background: 'rgba(255,255,255,0.05)', color: 'inherit' }}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #475569', background: '#1e293b', color: '#f8fafc' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: 'var(--slate-300)' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.35rem', color: '#cbd5e1' }}>
                       Quality Grade *
                     </label>
                     <select
                       value={contribGrade}
                       onChange={(e) => setContribGrade(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #475569', background: '#1e293b', color: 'inherit' }}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #475569', background: '#1e293b', color: '#f8fafc' }}
                     >
-                      <option value="Grade A">Grade A (Premium)</option>
-                      <option value="Grade B">Grade B (Standard)</option>
-                      <option value="Grade C">Grade C (Commercial)</option>
+                      <option value="Grade A" style={{ background: '#1e293b', color: '#f8fafc' }}>Grade A (Premium)</option>
+                      <option value="Grade B" style={{ background: '#1e293b', color: '#f8fafc' }}>Grade B (Standard)</option>
+                      <option value="Grade C" style={{ background: '#1e293b', color: '#f8fafc' }}>Grade C (Commercial)</option>
                     </select>
                   </div>
                 </div>
@@ -560,7 +561,7 @@ export default function FarmerDashboard() {
                     <div style={{ color: '#10b981', fontWeight: 600 }}>
                       Estimated Net Payout: {formatPrice(estimatedNetPayout)}
                     </div>
-                    <small style={{ color: 'var(--slate-400)' }}>
+                    <small style={{ color: '#94a3b8' }}>
                       Calculated as {contribQty} × {selectedPool.unitPrice} ETB minus 5% platform escrow commission.
                     </small>
                   </div>
