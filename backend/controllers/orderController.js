@@ -97,10 +97,16 @@ exports.createOrder = async (req, res) => {
 // ────────────────────────────────────────────────────────────────────────────
 exports.getMyOrders = async (req, res) => {
   try {
-    const filter =
-      req.user.role === 'farmer' || req.user.role === 'cooperative'
-        ? { farmer: req.user._id }
-        : { buyer: req.user._id };
+    // Support filtering by ?type=purchases (orders placed) or ?type=sales (orders received)
+    // Default: return all orders where the user is either the buyer or the farmer
+    let filter;
+    if (req.query.type === 'purchases') {
+      filter = { buyer: req.user._id };
+    } else if (req.query.type === 'sales') {
+      filter = { farmer: req.user._id };
+    } else {
+      filter = { $or: [{ buyer: req.user._id }, { farmer: req.user._id }] };
+    }
 
     const orders = await Order.find(filter)
       .populate('product', 'title price location images region zone grade')
@@ -108,17 +114,22 @@ exports.getMyOrders = async (req, res) => {
       .populate('farmer',  'name phone email cooperativeName')
       .sort({ createdAt: -1 });
 
-    if (req.user.role === 'buyer') {
-      const reviewedIds = await Review.find({
-        buyer: req.user._id,
-        order: { $in: orders.map((o) => o._id) },
-      }).distinct('order');
-      const reviewedSet = new Set(reviewedIds.map(String));
-      const withFlag = orders.map((o) => ({ ...o.toObject(), reviewed: reviewedSet.has(String(o._id)) }));
-      return res.json({ orders: withFlag });
-    }
+    const reviewedIds = await Review.find({
+      buyer: req.user._id,
+      order: { $in: orders.map((o) => o._id) },
+    }).distinct('order');
+    const reviewedSet = new Set(reviewedIds.map(String));
 
-    res.json({ orders });
+    const withFlag = orders.map((o) => {
+      const isBuyer = String(o.buyer?._id || o.buyer) === String(req.user._id);
+      return {
+        ...o.toObject(),
+        isBuyer,
+        reviewed: reviewedSet.has(String(o._id)),
+      };
+    });
+
+    res.json({ orders: withFlag });
   } catch (error) {
     res.status(500).json({ message: 'Could not load orders', error: error.message });
   }
