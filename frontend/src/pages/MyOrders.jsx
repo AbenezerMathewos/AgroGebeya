@@ -155,9 +155,14 @@ export default function MyOrders() {
         )}
       </div>
 
-      <div className="admin-tabs">
+      <div className="orders-status-filters">
         {['all', 'pending', 'accepted', 'in_transit', 'completed'].map((tab) => (
-          <button key={tab} onClick={() => setFilter(tab)} disabled={filter === tab}>
+          <button
+            key={tab}
+            type="button"
+            className={`orders-filter-pill ${filter === tab ? 'active' : ''}`}
+            onClick={() => setFilter(tab)}
+          >
             {tab === 'all' ? 'All Statuses' : STATUS_LABEL[tab] || tab}
           </button>
         ))}
@@ -240,7 +245,7 @@ export default function MyOrders() {
                   <div className="order-receipt-quick-row">
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className={`btn btn-sm ${order.paymentStatus === 'escrow_held' || order.paymentStatus === 'released_to_farmer' ? 'btn-escrow-voucher' : 'btn-primary'}`}
                       onClick={() => setActivePaymentOrder(order)}
                     >
                       📜 {order.paymentStatus === 'escrow_held' || order.paymentStatus === 'released_to_farmer' ? 'View Escrow Voucher' : '⚡ Complete Escrow Payment'}
