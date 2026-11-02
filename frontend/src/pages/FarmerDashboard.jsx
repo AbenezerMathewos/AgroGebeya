@@ -5,22 +5,27 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCurrencyUnit } from '../context/CurrencyUnitContext';
 import { productService } from '../services/productService';
 import { poolService } from '../services/poolService';
+import { orderService } from '../services/orderService';
 import ProductThumb from '../components/ProductThumb';
 import WeatherWidget from '../components/WeatherWidget';
+import EscrowPaymentModal from '../components/EscrowPaymentModal';
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { formatPrice } = useCurrencyUnit();
 
-  const [activeTab, setActiveTab] = useState('listings'); // 'listings' | 'pools'
+  const [activeTab, setActiveTab] = useState('listings'); // 'listings' | 'orders' | 'pools'
   const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [contributions, setContributions] = useState([]);
   const [openPools, setOpenPools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [deletingId, setDeletingId] = useState(null);
+  const [selectedPayOrder, setSelectedPayOrder] = useState(null);
+  const [releasingEscrowId, setReleasingEscrowId] = useState(null);
 
   // Contribute to pool modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -33,14 +38,16 @@ export default function FarmerDashboard() {
     setLoading(true);
     setError('');
     try {
-      const [prodRes, contribRes, openPoolsRes] = await Promise.all([
+      const [prodRes, contribRes, openPoolsRes, orderRes] = await Promise.all([
         productService.getMine().catch(() => ({ products: [] })),
         poolService.getMyContributions().catch(() => ({ contributions: [] })),
         poolService.getOpenPools().catch(() => ({ pools: [] })),
+        orderService.getMine().catch(() => ({ orders: [] })),
       ]);
       setProducts(prodRes.products || []);
       setContributions(contribRes.contributions || []);
       setOpenPools(openPoolsRes.pools || []);
+      setOrders(orderRes.orders || []);
     } catch (err) {
       console.error('Error loading farmer dashboard data:', err);
       setError('Could not load dashboard data. Please try again.');
@@ -52,6 +59,24 @@ export default function FarmerDashboard() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const myPurchases = orders.filter(
+    (o) => o.isBuyer || String(o.buyer?._id || o.buyer) === String(user?._id)
+  );
+
+  const handleReleaseEscrow = async (orderId) => {
+    if (!window.confirm('Confirm that you have received and inspected this produce? This will release the escrow payout to the seller.')) return;
+    setReleasingEscrowId(orderId);
+    try {
+      await orderService.releaseEscrow(orderId);
+      setSuccessMsg('✅ Escrow payment released! Order marked as completed.');
+      loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not release escrow.');
+    } finally {
+      setReleasingEscrowId(null);
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this listing? This cannot be undone.')) return;
@@ -182,7 +207,7 @@ export default function FarmerDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.1))', marginBottom: '1.5rem', gap: '1rem' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.1))', marginBottom: '1.5rem', gap: '0.75rem', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('listings')}
           style={{
@@ -197,6 +222,21 @@ export default function FarmerDashboard() {
           }}
         >
           🌾 My Harvest Listings ({products.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('orders')}
+          style={{
+            padding: '0.75rem 1.25rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'orders' ? '3px solid #10b981' : '3px solid transparent',
+            color: activeTab === 'orders' ? 'var(--text-color, #10b981)' : 'var(--slate-400)',
+            fontWeight: activeTab === 'orders' ? 700 : 500,
+            cursor: 'pointer',
+            fontSize: '1rem',
+          }}
+        >
+          🛒 My Purchases & Orders ({myPurchases.length})
         </button>
         <button
           onClick={() => setActiveTab('pools')}
@@ -310,7 +350,148 @@ export default function FarmerDashboard() {
         </div>
       )}
 
-      {/* Tab 2: Cooperative Pool Pledges */}
+      {/* Tab 2: My Purchases & Orders */}
+      {activeTab === 'orders' && (
+        <div>
+          <div className="section-header-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div>
+              <h2>My Purchases & Orders</h2>
+              <p className="subtext">
+                Track produce you have ordered, live escrow payments, and transit delivery status
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Link to="/orders" className="btn btn-secondary btn-sm">
+                📦 Open Full Orders Hub
+              </Link>
+              <button onClick={loadData} className="btn btn-ghost btn-sm" title="Refresh">
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="page-loading">Loading your orders...</div>
+          ) : myPurchases.length === 0 ? (
+            <div className="empty-card" style={{ padding: '3rem', textAlign: 'center' }}>
+              <span className="empty-icon" style={{ fontSize: '2.5rem' }}>🛒</span>
+              <h3>No purchases yet</h3>
+              <p style={{ color: 'var(--slate-400)', maxWidth: '520px', margin: '0.5rem auto 1.5rem auto' }}>
+                Browse verified produce listings and agricultural supplies across Ethiopia with 100% escrow protection.
+              </p>
+              <Link to="/products" className="btn btn-primary">
+                Browse Marketplace &rarr;
+              </Link>
+            </div>
+          ) : (
+            <div className="table-responsive-wrapper">
+              <table className="my-products-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th>Produce Lot</th>
+                    <th>Seller / Producer</th>
+                    <th>Quantity</th>
+                    <th>Total Value</th>
+                    <th>Order Status</th>
+                    <th>Escrow Vault</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myPurchases.map((order) => {
+                    const isHeld = order.paymentStatus === 'escrow_held' || order.escrowStatus === 'held_in_escrow';
+                    const isReleased = order.paymentStatus === 'released_to_farmer' || order.escrowStatus === 'released_to_seller';
+                    const totalVal = order.totalPrice || order.totalAmount || (order.quantity * (order.product?.price || 0));
+
+                    return (
+                      <tr key={order._id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <ProductThumb product={order.product} size={44} />
+                            <div>
+                              <strong>{order.product?.title || 'Produce Lot'}</strong>
+                              <br />
+                              <small style={{ color: 'var(--slate-400)' }}>
+                                Ordered {new Date(order.createdAt).toLocaleDateString()}
+                              </small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span>{order.farmer?.name || 'Producer'}</span>
+                          {order.farmer?.cooperativeName && (
+                            <small style={{ display: 'block', color: 'var(--slate-400)' }}>
+                              ({order.farmer.cooperativeName})
+                            </small>
+                          )}
+                          <small style={{ color: 'var(--slate-400)' }}>
+                            📍 {order.product?.location || order.deliveryAddress?.city || 'Ethiopia'}
+                          </small>
+                        </td>
+                        <td>
+                          <strong>{order.quantity} {order.unit || 'Kg'}</strong>
+                        </td>
+                        <td>
+                          <strong style={{ color: '#10b981' }}>{formatPrice(totalVal)}</strong>
+                        </td>
+                        <td>
+                          <span className={`badge badge-${order.status}`}>
+                            {order.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          {isHeld && (
+                            <span className="badge badge-accepted" style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #10b981' }}>
+                              🔒 Escrow Secured
+                            </span>
+                          )}
+                          {isReleased && (
+                            <span className="badge badge-muted" style={{ background: '#f1f5f9', color: '#475569' }}>
+                              ✅ Payout Disbursed
+                            </span>
+                          )}
+                          {!isHeld && !isReleased && (
+                            <span className="badge badge-pending" style={{ background: '#fef3c7', color: '#d97706' }}>
+                              ⏳ Pending Payment
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <Link to="/orders" className="btn btn-ghost btn-sm">
+                              📜 Stepper
+                            </Link>
+                            {!order.isPaid && order.status !== 'cancelled' && (
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={() => setSelectedPayOrder(order)}
+                              >
+                                ⚡ Pay Escrow
+                              </button>
+                            )}
+                            {isHeld && order.status !== 'completed' && (
+                              <button
+                                className="btn btn-sm btn-outline-success"
+                                style={{ borderColor: '#10b981', color: '#059669' }}
+                                onClick={() => handleReleaseEscrow(order._id)}
+                                disabled={releasingEscrowId === order._id}
+                              >
+                                {releasingEscrowId === order._id ? 'Releasing...' : '✅ Confirm Receipt'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Cooperative Pool Pledges */}
       {activeTab === 'pools' && (
         <div>
           <div className="section-header-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -584,6 +765,20 @@ export default function FarmerDashboard() {
             )}
           </div>
         </div>
+      )}
+      {/* Interactive Escrow Payment Modal */}
+      {selectedPayOrder && (
+        <EscrowPaymentModal
+          isOpen={!!selectedPayOrder}
+          onClose={() => setSelectedPayOrder(null)}
+          order={selectedPayOrder}
+          product={selectedPayOrder.product}
+          onPaymentSuccess={() => {
+            setSelectedPayOrder(null);
+            setSuccessMsg('Payment secured in Escrow Vault!');
+            loadData();
+          }}
+        />
       )}
     </div>
   );
