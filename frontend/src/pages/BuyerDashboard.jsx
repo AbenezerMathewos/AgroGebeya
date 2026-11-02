@@ -523,8 +523,8 @@ export default function BuyerDashboard() {
                 />
               </div>
 
-              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '4px', fontSize: '0.82rem', color: '#475569' }}>
-                💡 <strong>Cooperative Virtual Pooling:</strong> Smallholder farmers across Ethiopian regional corridors will be notified to contribute partial harvests until your target volume of <strong>{poolForm.targetQuantity || 0} Quintals</strong> is met.
+              <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '0.85rem', borderRadius: '10px', fontSize: '0.82rem', color: '#e2e8f0', lineHeight: '1.5' }}>
+                💡 <strong style={{ color: '#38bdf8' }}>Cooperative Virtual Pooling:</strong> Smallholder farmers across Ethiopian regional corridors will be notified to contribute partial harvests until your target volume of <strong>{poolForm.targetQuantity || 0} Quintals</strong> is met.
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>

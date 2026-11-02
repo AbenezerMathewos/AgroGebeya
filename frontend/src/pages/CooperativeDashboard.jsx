@@ -430,10 +430,10 @@ export default function CooperativeDashboard() {
               <button className="modal-close-btn" onClick={() => setContributeModalPool(null)}>✕</button>
             </div>
             <form onSubmit={handleContribute} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '4px', fontSize: '0.85rem' }}>
-                Remaining needed capacity: <strong>{Math.max(0, contributeModalPool.targetQuantity - contributeModalPool.currentQuantity)} {contributeModalPool.unit}</strong>
+              <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '0.85rem', borderRadius: '10px', fontSize: '0.85rem', color: '#e2e8f0', lineHeight: '1.6' }}>
+                Remaining needed capacity: <strong style={{ color: '#38bdf8' }}>{Math.max(0, contributeModalPool.targetQuantity - contributeModalPool.currentQuantity)} {contributeModalPool.unit}</strong>
                 <br />
-                Offered contract price: <strong>{formatPrice(contributeModalPool.unitPrice)} / {contributeModalPool.unit}</strong>
+                Offered contract price: <strong style={{ color: '#38bdf8' }}>{formatPrice(contributeModalPool.unitPrice)} / {contributeModalPool.unit}</strong>
               </div>
 
               <div className="field-group">
@@ -462,7 +462,7 @@ export default function CooperativeDashboard() {
               </div>
 
               {Number(contribForm.quantity) > 0 && (
-                <div style={{ background: '#ecfdf5', padding: '0.65rem 0.85rem', borderRadius: '4px', fontSize: '0.85rem', color: '#065f46' }}>
+                <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.75rem 0.85rem', borderRadius: '8px', fontSize: '0.85rem', color: '#34d399' }}>
                   💰 <strong>Calculated Farmer Payout (Net 95%):</strong>{' '}
                   {formatPrice(Math.round(Number(contribForm.quantity) * contributeModalPool.unitPrice * 0.95 * 100) / 100)}
                 </div>
