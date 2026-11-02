@@ -18,6 +18,7 @@ export default function BuyerDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPayOrder, setSelectedPayOrder] = useState(null);
   const [releasingId, setReleasingId] = useState(null);
+  const [confirmEscrowOrder, setConfirmEscrowOrder] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -76,16 +77,14 @@ export default function BuyerDashboard() {
     return orders.filter((o) => o.status === statusFilter);
   }, [orders, statusFilter]);
 
-  const handleReleaseEscrow = async (orderId) => {
-    if (!window.confirm('Have you received and verified this produce in satisfactory condition? This will release the escrow payout to the seller.')) {
-      return;
-    }
+  const executeReleaseEscrow = async (orderId) => {
     setReleasingId(orderId);
     setErrorMsg('');
     setSuccessMsg('');
     try {
       const res = await orderService.releaseEscrow(orderId);
       setSuccessMsg(res.message || 'Escrow released successfully! Funds disbursed to seller.');
+      setConfirmEscrowOrder(null);
       loadData();
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Could not release escrow. Please try again.');
@@ -316,7 +315,7 @@ export default function BuyerDashboard() {
                             <button
                               className="btn btn-sm btn-outline-success"
                               style={{ borderColor: '#10b981', color: '#059669' }}
-                              onClick={() => handleReleaseEscrow(order._id)}
+                              onClick={() => setConfirmEscrowOrder(order)}
                               disabled={releasingId === order._id}
                             >
                               {releasingId === order._id ? 'Releasing...' : '✅ Inspect & Release'}
@@ -537,6 +536,138 @@ export default function BuyerDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Professional Escrow Release Confirmation Modal */}
+      {confirmEscrowOrder && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              background: '#0f172a',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              borderRadius: '20px',
+              width: '100%',
+              maxWidth: '500px',
+              padding: '2rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+              color: '#f8fafc',
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+              <div
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '2px solid rgba(16, 185, 129, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '2rem',
+                  margin: '0 auto 1rem auto',
+                }}
+              >
+                🛡️
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.35rem', color: '#f8fafc' }}>
+                Verify Produce & Release Escrow
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: '#94a3b8', lineHeight: '1.5' }}>
+                Physical Quality & Volume Inspection Confirmation
+              </p>
+            </div>
+
+            {/* Produce Summary Card */}
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                padding: '1rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.86rem',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                <span style={{ color: '#94a3b8' }}>Produce:</span>
+                <strong style={{ color: '#f8fafc' }}>{confirmEscrowOrder.product?.title || 'Produce Lot'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                <span style={{ color: '#94a3b8' }}>Seller / Producer:</span>
+                <span style={{ color: '#f8fafc' }}>{confirmEscrowOrder.farmer?.name || 'Producer'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                <span style={{ color: '#94a3b8' }}>Quantity:</span>
+                <span style={{ color: '#f8fafc' }}>{confirmEscrowOrder.quantity} {confirmEscrowOrder.unit}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.4rem', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                <span style={{ color: '#94a3b8' }}>Net Payout to Seller:</span>
+                <strong style={{ color: '#10b981', fontSize: '1.05rem' }}>
+                  {formatPrice(confirmEscrowOrder.totalPrice || confirmEscrowOrder.totalAmount || 0)}
+                </strong>
+              </div>
+            </div>
+
+            {/* Security Guarantee Notice */}
+            <div
+              style={{
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                marginBottom: '1.5rem',
+                fontSize: '0.82rem',
+                color: '#fde68a',
+                lineHeight: '1.5',
+              }}
+            >
+              ⚠️ <strong>Inspection Protection:</strong> Only release escrow if you have received and inspected the harvest. Once confirmed, Telebirr/CBE escrow funds are immediately disbursed to the seller.
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setConfirmEscrowOrder(null)}
+                disabled={releasingId === confirmEscrowOrder._id}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  border: 'none',
+                  padding: '0.65rem 1.25rem',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
+                }}
+                onClick={() => executeReleaseEscrow(confirmEscrowOrder._id)}
+                disabled={releasingId === confirmEscrowOrder._id}
+              >
+                {releasingId === confirmEscrowOrder._id ? 'Disbursing Funds...' : '✅ Yes, Verify & Release Escrow'}
+              </button>
+            </div>
           </div>
         </div>
       )}
