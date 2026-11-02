@@ -1,9 +1,21 @@
-﻿# 🌾 AgroGebeya Ethiopia
+# 🌾 AgroGebeya Ethiopia
 ### National Agricultural Market, Virtual Cooperative Pooling & Rural Freight Logistics Platform
 
 > **Academic Capstone Project**  
 > **Evaluation Criteria Focus:** Significance, Originality, and Technical Depth  
-> **Author:** Abenezer Mathewos  
+> **Author:** Abenezer Mathewos
+
+---
+
+## 🔗 Live Deployment
+
+| | URL |
+| :--- | :--- |
+| 🌐 **Live Platform** | [https://agro-gebeya.vercel.app](https://agro-gebeya.vercel.app) |
+| 🟠 **Backend API** | [https://agrogebeya-backend.onrender.com](https://agrogebeya-backend.onrender.com) |
+| 📦 **GitHub Repository** | [https://github.com/AbenezerMathewos/AgroGebeya](https://github.com/AbenezerMathewos/AgroGebeya) |
+
+> **Note:** The backend is hosted on Render's free tier. The first request after a period of inactivity may take 20–30 seconds to wake up.
 
 ---
 
@@ -179,3 +191,64 @@ Use these accounts to demonstrate each role during project evaluation / defense:
 
 ## 📄 License
 This project is submitted as an academic capstone under the **MIT License**.
+
+---
+
+## 📁 Project Structure
+
+```
+AgroGebeya/
+├── backend/
+│   ├── config/
+│   │   └── db.js                  # MongoDB Atlas connection
+│   ├── controllers/               # Business logic for each module
+│   │   ├── authController.js      # Register, login, JWT issuance
+│   │   ├── productController.js   # Harvest listing CRUD
+│   │   ├── orderController.js     # Escrow & order lifecycle
+│   │   ├── poolOrderController.js # Virtual yield pooling engine
+│   │   ├── freightController.js   # Return-trip freight dispatch
+│   │   ├── advisoryController.js  # Gemini AI agronomist
+│   │   ├── marketPriceController.js # ECX price broadcasting
+│   │   ├── chatController.js      # Messaging
+│   │   ├── notificationController.js
+│   │   ├── reviewController.js
+│   │   ├── weatherController.js
+│   │   └── adminController.js     # Platform-wide admin metrics
+│   ├── middleware/
+│   │   ├── authMiddleware.js      # JWT verification & role guards
+│   │   └── uploadMiddleware.js    # Multer file handling
+│   ├── models/                    # Mongoose schemas
+│   │   ├── User.js
+│   │   ├── Product.js
+│   │   ├── Order.js
+│   │   ├── PoolOrder.js
+│   │   ├── FreightTrip.js
+│   │   ├── CropAdvisory.js
+│   │   ├── MarketPrice.js
+│   │   ├── Conversation.js
+│   │   ├── Message.js
+│   │   ├── Notification.js
+│   │   └── Review.js
+│   ├── routes/                    # Express route definitions
+│   ├── utils/
+│   │   └── seedData.js            # Demo data for all 5 roles
+│   ├── server.js                  # Entry point & middleware setup
+│   ├── socket.js                  # Socket.IO real-time event handlers
+│   └── .env.example               # Environment variable template
+└── frontend/
+    └── src/
+        ├── components/            # Reusable UI components
+        ├── context/               # React context (auth state)
+        ├── hooks/                 # Custom React hooks
+        ├── pages/                 # Route-level page components
+        │   ├── farmer/            # Farmer dashboard & workflows
+        │   ├── buyer/             # Buyer command center
+        │   ├── cooperative/       # Cooperative union dashboard
+        │   ├── transporter/       # Freight fleet hub
+        │   └── admin/             # System admin panel
+        ├── services/
+        │   ├── api.js             # Axios instance (reads VITE_API_URL)
+        │   ├── socket.js          # Socket.IO client connection
+        │   └── *.js               # Per-feature API service files
+        └── utils/                 # Helper functions
+```
