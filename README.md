@@ -181,10 +181,10 @@ Use these accounts to demonstrate each role during project evaluation / defense:
 
 | Role | Email | Password | Primary Workflow to Demonstrate |
 | :--- | :--- | :--- | :--- |
-| **🏢 Wholesale Buyer** | `marta@agrogebeya.et` | `Buyer123456` | Review escrow vault, pay via Chapa, verify & release escrow, post bulk RFQ. |
-| **🤝 Cooperative Union** | `tadesse@agrogebeya.et` | `Farmer123456` | Review virtual yield pooling engine, audit member farmer yield slices. |
-| **🧑‍🌾 Smallholder Farmer** | `alemu@agrogebeya.et` | `Farmer123456` | Manage harvest listings, pledge partial yield into an open bulk pool. |
-| **🚚 Transporter** | `girma@agrogebeya.et` | `Farmer123456` | Post discounted return-trip freight, transition routes to `En Route` and `Delivered`. |
+| **🏢 Wholesale Buyer** | `buyer@agrogebeya.et` | `Buyer123456` | Review escrow vault, pay via Chapa, verify & release escrow, post bulk RFQ. |
+| **🤝 Cooperative Union** | `cooperative@agrogebeya.et` | `Coop123456` | Review virtual yield pooling engine, audit member farmer yield slices. |
+| **🧑‍🌾 Smallholder Farmer** | `farmer@agrogebeya.et` | `Farmer123456` | Manage harvest listings, pledge partial yield into an open bulk pool. |
+| **🚚 Transporter** | `transporter@agrogebeya.et` | `Transporter123456` | Post discounted return-trip freight, transition routes to `En Route` and `Delivered`. |
 | **🛡️ System Administrator** | `admin@agrogebeya.et` | `Admin123456` | View platform-wide metrics, audit 5% take-rate commissions, broadcast ECX prices. |
 
 ---

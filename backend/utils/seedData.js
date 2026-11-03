@@ -38,10 +38,12 @@ async function seed() {
   const hashPass = (pw) => bcrypt.hash(pw, salt);
 
   // 1. Users
-  const [adminPw, farmerPw, buyerPw] = await Promise.all([
+  const [adminPw, farmerPw, buyerPw, coopPw, transporterPw] = await Promise.all([
     hashPass('Admin123456'),
     hashPass('Farmer123456'),
     hashPass('Buyer123456'),
+    hashPass('Coop123456'),
+    hashPass('Transporter123456'),
   ]);
 
   const admin = await User.create({
@@ -57,7 +59,7 @@ async function seed() {
 
   const farmerWolaita = await User.create({
     name: 'Alemu Wolde',
-    email: 'alemu@agrogebeya.et',
+    email: 'farmer@agrogebeya.et',
     password: farmerPw,
     role: 'farmer',
     phone: '+251912345678',
@@ -83,8 +85,8 @@ async function seed() {
 
   const coopAmhara = await User.create({
     name: 'Tadesse Mengesha (Coop Manager)',
-    email: 'tadesse@agrogebeya.et',
-    password: farmerPw,
+    email: 'cooperative@agrogebeya.et',
+    password: coopPw,
     role: 'cooperative',
     phone: '+251933445566',
     region: 'Amhara',
@@ -96,8 +98,8 @@ async function seed() {
 
   const transporterGirma = await User.create({
     name: 'Girma Desta (Transporter)',
-    email: 'girma@agrogebeya.et',
-    password: farmerPw,
+    email: 'transporter@agrogebeya.et',
+    password: transporterPw,
     role: 'transporter',
     phone: '+251944556677',
     region: 'South Ethiopia',
@@ -107,7 +109,7 @@ async function seed() {
 
   const buyerMarta = await User.create({
     name: 'Marta Bekele (Wholesale Grain Merchant)',
-    email: 'marta@agrogebeya.et',
+    email: 'buyer@agrogebeya.et',
     password: buyerPw,
     role: 'buyer',
     phone: '+251911223344',
@@ -827,11 +829,11 @@ async function seed() {
   console.log('Seeded Virtual Yield Pooling Contracts & Smallholder Pledges.');
   console.log('Seeded Demo Orders & Reviews with Escrow.');
   console.log('\n--- SEED COMPLETE ---');
-  console.log('Admin Account:   admin@agrogebeya.et / Admin123456');
-  console.log('Farmer Account:  alemu@agrogebeya.et / Farmer123456');
-  console.log('Coop Account:    tadesse@agrogebeya.et / Farmer123456');
-  console.log('Buyer Account:   marta@agrogebeya.et / Buyer123456');
-  console.log('Transporter:     girma@agrogebeya.et / Farmer123456');
+  console.log('Admin Account:       admin@agrogebeya.et / Admin123456');
+  console.log('Farmer Account:      farmer@agrogebeya.et / Farmer123456');
+  console.log('Coop Account:        cooperative@agrogebeya.et / Coop123456');
+  console.log('Buyer Account:       buyer@agrogebeya.et / Buyer123456');
+  console.log('Transporter Account: transporter@agrogebeya.et / Transporter123456');
   console.log('---------------------\n');
 
   await mongoose.disconnect();
