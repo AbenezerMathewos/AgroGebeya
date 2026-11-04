@@ -4,9 +4,10 @@ const PLATFORM_COMMISSION_RATE = 0.05; // 5% platform take-rate
 
 const orderSchema = new mongoose.Schema(
   {
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    buyer:   { type: mongoose.Schema.Types.ObjectId, ref: 'User',    required: true },
-    farmer:  { type: mongoose.Schema.Types.ObjectId, ref: 'User',    required: true },
+    product:     { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    buyer:       { type: mongoose.Schema.Types.ObjectId, ref: 'User',    required: true },
+    farmer:      { type: mongoose.Schema.Types.ObjectId, ref: 'User',    required: true },
+    transporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     quantity:  { type: Number, required: true, min: 0.01 },
     unit:      { type: String, default: 'Kg', trim: true },

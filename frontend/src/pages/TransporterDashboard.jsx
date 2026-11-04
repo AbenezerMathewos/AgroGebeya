@@ -5,6 +5,7 @@ import { useCurrencyUnit } from '../context/CurrencyUnitContext';
 import { freightService } from '../services/freightService';
 import { poolService } from '../services/poolService';
 import { chatService } from '../services/chatService';
+import { orderService } from '../services/orderService';
 
 const emptyTripForm = {
   driverName: '',
@@ -29,14 +30,16 @@ export default function TransporterDashboard() {
 
   const [trips, setTrips] = useState([]);
   const [pools, setPools] = useState([]);
+  const [freightOrders, setFreightOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('trips'); // 'trips' | 'cargo-opportunities'
+  const [activeTab, setActiveTab] = useState('trips'); // 'trips' | 'cargo-opportunities' | 'orders'
   const [statusFilter, setStatusFilter] = useState('all');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [contactingPool, setContactingPool] = useState(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [chatStarting, setChatStarting] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   // Trip Creation Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,15 +76,33 @@ export default function TransporterDashboard() {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId, status) => {
+    try {
+      setUpdatingOrderId(orderId);
+      const res = await orderService.updateStatus(orderId, status);
+      setFreightOrders((prev) => prev.map((o) => (o._id === orderId ? res.order : o)));
+      setSuccessMsg(`Order status successfully updated to ${status === 'in_transit' ? 'In Transit 🚚' : 'Delivered ✅'}`);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+      setErrorMsg('Could not update order status. Please try again.');
+      setTimeout(() => setErrorMsg(''), 4000);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tripsRes, poolsRes] = await Promise.all([
+      const [tripsRes, poolsRes, ordersRes] = await Promise.all([
         freightService.getMyTrips().catch(() => ({ trips: [] })),
         poolService.getOpenPools().catch(() => ({ pools: [] })),
+        orderService.getMine().catch(() => ({ orders: [] })),
       ]);
       setTrips(tripsRes.trips || []);
       setPools(poolsRes.pools || []);
+      setFreightOrders(ordersRes.orders || []);
     } catch (err) {
       console.error('Error loading transporter data:', err);
       setErrorMsg('Could not load fleet data. Please refresh.');
@@ -270,7 +291,22 @@ export default function TransporterDashboard() {
             fontSize: '1rem',
           }}
         >
-          📦 Available Cargo & Pooling Demands ({pools.length})
+          🌾 Institutional Bulk Pools ({pools.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('orders')}
+          style={{
+            padding: '0.75rem 1.25rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'orders' ? '3px solid #10b981' : '3px solid transparent',
+            color: activeTab === 'orders' ? 'var(--text-color, #10b981)' : 'var(--slate-400)',
+            fontWeight: activeTab === 'orders' ? 700 : 500,
+            cursor: 'pointer',
+            fontSize: '1rem',
+          }}
+        >
+          📦 Marketplace Cargo Deliveries ({freightOrders.length})
         </button>
       </div>
 
@@ -531,6 +567,117 @@ export default function TransporterDashboard() {
                         onClick={() => setContactingPool(p)}
                       >
                         📞 Contact Buyer
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Marketplace Cargo Deliveries */}
+      {activeTab === 'orders' && (
+        <div>
+          <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>Marketplace Cargo Deliveries & Freight Orders</h3>
+              <p style={{ color: 'var(--slate-400)', margin: 0 }}>
+                Individual crop orders placed by buyers requesting direct delivery or regional freight pooling.
+              </p>
+            </div>
+            <Link to="/orders" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+              Full Dispatch Hub &rarr;
+            </Link>
+          </div>
+
+          {freightOrders.length === 0 ? (
+            <div style={{ padding: '2.5rem', textAlign: 'center', background: 'var(--card-bg, rgba(255,255,255,0.02))', borderRadius: '12px' }}>
+              <p style={{ color: 'var(--slate-400)' }}>No active crop delivery orders at this moment.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem' }}>
+              {freightOrders.map((ord) => (
+                <div
+                  key={ord._id}
+                  style={{
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    background: 'var(--card-bg, rgba(255,255,255,0.04))',
+                    border: '1px solid var(--border-color, rgba(255,255,255,0.1))',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>🌾 {ord.product?.title || 'Agricultural Produce'}</span>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '4px',
+                          background: ord.status === 'completed' ? 'rgba(16, 185, 129, 0.15)' : ord.status === 'in_transit' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(56, 189, 248, 0.15)',
+                          color: ord.status === 'completed' ? '#10b981' : ord.status === 'in_transit' ? '#f59e0b' : '#38bdf8',
+                          fontWeight: 600,
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {ord.status === 'in_transit' ? '🚚 In Transit' : ord.status}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 600, margin: '0 0 0.5rem 0' }}>
+                      Cargo Load: {ord.quantity} {ord.unit || 'Quintals'} &bull; Value: {(ord.totalPrice || ord.quantity * (ord.product?.price || 0)).toLocaleString()} ETB
+                    </p>
+
+                    <div style={{ fontSize: '0.82rem', color: 'var(--slate-400)', margin: '0 0 0.4rem 0' }}>
+                      📍 <strong>Pickup (Farmgate):</strong> {ord.farmer?.name || 'Farmer'} ({ord.product?.location || ord.farmer?.region || 'Ethiopia'})
+                    </div>
+
+                    <div style={{ fontSize: '0.82rem', color: 'var(--slate-400)', margin: '0 0 0.6rem 0' }}>
+                      🎯 <strong>Destination:</strong> {ord.deliveryAddress?.city || 'Addis Ababa'} &bull; Buyer: {ord.buyer?.name || 'Buyer'}
+                    </div>
+
+                    <div style={{ fontSize: '0.78rem', padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', marginBottom: '0.75rem' }}>
+                      📞 Farmer: {ord.farmer?.phone || 'N/A'} &bull; Buyer: {ord.contactPhone || 'N/A'}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color, rgba(255,255,255,0.08))', gap: '0.4rem' }}>
+                    <div style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {ord.status === 'pending' || ord.status === 'accepted' ? (
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          disabled={updatingOrderId === ord._id}
+                          onClick={() => handleUpdateOrderStatus(ord._id, 'in_transit')}
+                          style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                        >
+                          🚚 Pick Up & Ship
+                        </button>
+                      ) : ord.status === 'in_transit' ? (
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          disabled={updatingOrderId === ord._id}
+                          onClick={() => handleUpdateOrderStatus(ord._id, 'completed')}
+                          style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                        >
+                          ✅ Confirm Delivery
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>✅ Delivered</span>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => navigate('/messages')}
+                        style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                      >
+                        💬 Chat
                       </button>
                     </div>
                   </div>

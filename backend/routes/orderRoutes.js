@@ -19,8 +19,8 @@ router.use(protect);
 
 // ── Core order CRUD ──────────────────────────────────────────────────────────
 router.post('/',     authorize('buyer', 'cooperative', 'farmer', 'admin'), createOrder);
-router.get('/my',   authorize('buyer', 'farmer', 'cooperative', 'admin'), getMyOrders);
-router.patch('/:id/status', authorize('buyer', 'farmer', 'cooperative', 'admin'), updateOrderStatus);
+router.get('/my',   authorize('buyer', 'farmer', 'cooperative', 'transporter', 'admin'), getMyOrders);
+router.patch('/:id/status', authorize('buyer', 'farmer', 'cooperative', 'transporter', 'admin'), updateOrderStatus);
 router.post('/:id/pay',     authorize('buyer', 'cooperative', 'farmer', 'admin'), payOrder); // Escrow payment simulation
 
 // ── Chapa Real-Money Escrow Routes ───────────────────────────────────────────

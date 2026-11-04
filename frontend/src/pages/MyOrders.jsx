@@ -33,12 +33,13 @@ export default function MyOrders() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const isFarmerRole = user?.role === 'farmer' || user?.role === 'cooperative';
+  const isTransporter = user?.role === 'transporter';
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [filter, setFilter] = useState('all');
-  const [viewType, setViewType] = useState('all'); // 'all' | 'purchases' | 'sales'
+  const [viewType, setViewType] = useState('all'); // 'all' | 'purchases' | 'sales' | 'delivery' | 'freight_pool'
   const [activePaymentOrder, setActivePaymentOrder] = useState(null);
 
   const loadOrders = () => {
@@ -69,6 +70,11 @@ export default function MyOrders() {
   const currentUserId = (user?._id || user?.id)?.toString();
 
   const typedOrders = orders.filter((o) => {
+    if (isTransporter) {
+      if (viewType === 'delivery') return o.fulfillment === 'delivery';
+      if (viewType === 'freight_pool') return o.fulfillment === 'freight_pool';
+      return true;
+    }
     const isBuyer =
       o.isBuyer !== undefined
         ? o.isBuyer
@@ -90,68 +96,127 @@ export default function MyOrders() {
       ? !o.isBuyer
       : Boolean(currentUserId && (o.buyer?._id || o.buyer)?.toString() !== currentUserId)
   ).length;
+  const directDeliveryCount = orders.filter((o) => o.fulfillment === 'delivery').length;
+  const poolDeliveryCount = orders.filter((o) => o.fulfillment === 'freight_pool').length;
 
   return (
     <div className="orders-page">
       <div className="page-intro">
-        <span className="eyebrow">Transaction & Escrow Hub</span>
-        <h1>Order Tracking & Dispatches</h1>
+        <span className="eyebrow">{isTransporter ? 'Logistics & Cargo Hub' : 'Transaction & Escrow Hub'}</span>
+        <h1>{isTransporter ? 'Cargo Freight & Delivery Dispatches' : 'Order Tracking & Dispatches'}</h1>
         <p>
-          Track real-time orders, manage escrow disbursements, dispatch freight, and confirm deliveries with 100% buyer & farmer protection.
+          {isTransporter
+            ? 'Manage regional agricultural produce dispatches, haul harvests from farmgates, and confirm safe client delivery.'
+            : 'Track real-time orders, manage escrow disbursements, dispatch freight, and confirm deliveries with 100% buyer & farmer protection.'}
         </p>
       </div>
 
       {/* Role-Agnostic Transaction Type Switcher */}
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setViewType('all')}
-          style={{
-            padding: '0.45rem 1rem',
-            borderRadius: '20px',
-            border: 'none',
-            background: viewType === 'all' ? '#10b981' : 'rgba(255,255,255,0.06)',
-            color: viewType === 'all' ? '#ffffff' : 'inherit',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-          }}
-        >
-          📦 All Orders ({orders.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewType('purchases')}
-          style={{
-            padding: '0.45rem 1rem',
-            borderRadius: '20px',
-            border: 'none',
-            background: viewType === 'purchases' ? '#10b981' : 'rgba(255,255,255,0.06)',
-            color: viewType === 'purchases' ? '#ffffff' : 'inherit',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-          }}
-        >
-          🛒 My Purchases ({purchaseCount})
-        </button>
-        {isFarmerRole && (
-          <button
-            type="button"
-            onClick={() => setViewType('sales')}
-            style={{
-              padding: '0.45rem 1rem',
-              borderRadius: '20px',
-              border: 'none',
-              background: viewType === 'sales' ? '#10b981' : 'rgba(255,255,255,0.06)',
-              color: viewType === 'sales' ? '#ffffff' : 'inherit',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-            }}
-          >
-            🌾 Orders Received / Sales ({salesCount})
-          </button>
+        {isTransporter ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setViewType('all')}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '20px',
+                border: 'none',
+                background: viewType === 'all' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                color: viewType === 'all' ? '#ffffff' : 'inherit',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+              }}
+            >
+              🚚 All Freight Dispatches ({orders.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewType('delivery')}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '20px',
+                border: 'none',
+                background: viewType === 'delivery' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                color: viewType === 'delivery' ? '#ffffff' : 'inherit',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+              }}
+            >
+              📦 Direct Deliveries ({directDeliveryCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewType('freight_pool')}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '20px',
+                border: 'none',
+                background: viewType === 'freight_pool' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                color: viewType === 'freight_pool' ? '#ffffff' : 'inherit',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+              }}
+            >
+              🤝 Freight Pools ({poolDeliveryCount})
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setViewType('all')}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '20px',
+                border: 'none',
+                background: viewType === 'all' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                color: viewType === 'all' ? '#ffffff' : 'inherit',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+              }}
+            >
+              📦 All Orders ({orders.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewType('purchases')}
+              style={{
+                padding: '0.45rem 1rem',
+                borderRadius: '20px',
+                border: 'none',
+                background: viewType === 'purchases' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                color: viewType === 'purchases' ? '#ffffff' : 'inherit',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+              }}
+            >
+              🛒 My Purchases ({purchaseCount})
+            </button>
+            {isFarmerRole && (
+              <button
+                type="button"
+                onClick={() => setViewType('sales')}
+                style={{
+                  padding: '0.45rem 1rem',
+                  borderRadius: '20px',
+                  border: 'none',
+                  background: viewType === 'sales' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                  color: viewType === 'sales' ? '#ffffff' : 'inherit',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                }}
+              >
+                🌾 Orders Received / Sales ({salesCount})
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -223,22 +288,42 @@ export default function MyOrders() {
                   </div>
 
                   <div className="order-details-meta">
-                    <p>
-                      {isOrderBuyer
-                        ? `👨‍🌾 Producer / Seller: ${order.farmer?.name || 'Farmer'}${order.farmer?.cooperativeName ? ` (${order.farmer.cooperativeName})` : ''}`
-                        : `👤 Buyer: ${order.buyer?.name || 'Buyer'}`} &middot;{' '}
-                      <strong>{order.quantity} {order.unit}</strong> &middot;{' '}
-                      <span className="text-highlight">Total: {order.totalPrice ? order.totalPrice.toLocaleString() : (order.quantity * (order.product?.price || 0)).toLocaleString()} ETB</span>
-                    </p>
-                    <p>
-                      💳 Method: <strong>{order.paymentMethod?.toUpperCase()}</strong> &middot;{' '}
-                      {order.escrowTransactionId && <span className="text-code">Tx: {order.escrowTransactionId} &middot; </span>}
-                      📞 Contact: {order.contactPhone}
-                    </p>
-                    {order.deliveryAddress?.city && (
-                      <p>📍 Delivery Destination: {order.deliveryAddress.city} {order.deliveryAddress.specificAddress ? `(${order.deliveryAddress.specificAddress})` : ''}</p>
+                    {isTransporter ? (
+                      <>
+                        <p>
+                          <strong>🌾 Commodity: {order.quantity} {order.unit}</strong> of {order.product?.title || 'Produce'} &middot;{' '}
+                          <span className="text-highlight">Total Payout: {order.totalPrice ? order.totalPrice.toLocaleString() : (order.quantity * (order.product?.price || 0)).toLocaleString()} ETB</span>
+                        </p>
+                        <p>
+                          📍 <strong>Pickup Origin (Farmgate / Depot):</strong> {order.farmer?.name} &bull; {order.product?.location || order.farmer?.region || 'Ethiopia'} (📞 {order.farmer?.phone || 'N/A'})
+                        </p>
+                        <p>
+                          🎯 <strong>Delivery Destination:</strong> {order.deliveryAddress?.city || 'Addis Ababa'} {order.deliveryAddress?.specificAddress ? `(${order.deliveryAddress.specificAddress})` : ''} &bull; Buyer: {order.buyer?.name} (📞 {order.contactPhone})
+                        </p>
+                        <p>
+                          🚚 Fulfillment Method: <strong>{order.fulfillment === 'freight_pool' ? 'Freight-Sharing Pool' : 'Direct Dispatch'}</strong> &middot; Escrow: <strong>{order.paymentStatus?.toUpperCase()}</strong>
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p>
+                          {isOrderBuyer
+                            ? `👨‍🌾 Producer / Seller: ${order.farmer?.name || 'Farmer'}${order.farmer?.cooperativeName ? ` (${order.farmer.cooperativeName})` : ''}`
+                            : `👤 Buyer: ${order.buyer?.name || 'Buyer'}`} &middot;{' '}
+                          <strong>{order.quantity} {order.unit}</strong> &middot;{' '}
+                          <span className="text-highlight">Total: {order.totalPrice ? order.totalPrice.toLocaleString() : (order.quantity * (order.product?.price || 0)).toLocaleString()} ETB</span>
+                        </p>
+                        <p>
+                          💳 Method: <strong>{order.paymentMethod?.toUpperCase()}</strong> &middot;{' '}
+                          {order.escrowTransactionId && <span className="text-code">Tx: {order.escrowTransactionId} &middot; </span>}
+                          📞 Contact: {order.contactPhone}
+                        </p>
+                        {order.deliveryAddress?.city && (
+                          <p>📍 Delivery Destination: {order.deliveryAddress.city} {order.deliveryAddress.specificAddress ? `(${order.deliveryAddress.specificAddress})` : ''}</p>
+                        )}
+                        {order.note && <p className="order-card-note">"{order.note}"</p>}
+                      </>
                     )}
-                    {order.note && <p className="order-card-note">"{order.note}"</p>}
                   </div>
 
                   {/* Quick Voucher Button */}
@@ -253,82 +338,118 @@ export default function MyOrders() {
                   </div>
                 </div>
 
-                {/* Seller Actions (if current user is the seller/farmer) */}
-                {!isOrderBuyer && order.status === 'pending' && (
-                  <div className="order-card-actions">
-                    <button
-                      className="btn btn-primary btn-sm"
-                      disabled={busyId === order._id}
-                      onClick={() => handleStatusChange(order._id, 'accepted')}
-                    >
-                      Accept Order
-                    </button>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      disabled={busyId === order._id}
-                      onClick={() => handleStatusChange(order._id, 'declined')}
-                    >
-                      Decline
-                    </button>
-                  </div>
-                )}
-
-                {!isOrderBuyer && order.status === 'accepted' && (
-                  <div className="order-card-actions">
-                    <button
-                      className="btn btn-primary btn-sm"
-                      disabled={busyId === order._id}
-                      onClick={() => handleStatusChange(order._id, 'in_transit')}
-                    >
-                      Dispatch & Ship 🚚
-                    </button>
-                  </div>
-                )}
-
-                {!isOrderBuyer && order.status === 'in_transit' && (
-                  <div className="order-card-actions">
-                    <span className="badge badge-escrow">Waiting for buyer receipt...</span>
-                  </div>
-                )}
-
-                {!isOrderBuyer && order.status === 'completed' && (
-                  <div className="order-card-actions">
-                    <span className="badge badge-accepted">Delivered & Funds Released 💰</span>
-                  </div>
-                )}
-
-                {/* Buyer Actions (if current user placed this order, whether farmer, buyer, or coop) */}
-                {isOrderBuyer && (order.status === 'in_transit' || order.status === 'accepted') && (
-                  <div className="order-card-actions">
-                    <button
-                      className="btn btn-primary btn-sm"
-                      disabled={busyId === order._id}
-                      onClick={() => handleStatusChange(order._id, 'completed')}
-                    >
-                      ✅ {t('confirmReceipt')} & Release Escrow
-                    </button>
-                  </div>
-                )}
-
-                {isOrderBuyer && order.status === 'pending' && (
-                  <div className="order-card-actions">
-                    <span className="badge badge-pending">Waiting for producer acceptance...</span>
-                  </div>
-                )}
-
-                {isOrderBuyer && order.status === 'completed' && (
-                  <div className="order-card-actions">
-                    {order.reviewed ? (
-                      <span className="badge badge-accepted">Reviewed ⭐</span>
+                {/* Transporter Logistics Actions */}
+                {isTransporter ? (
+                  <div className="order-card-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', alignItems: 'stretch' }}>
+                    {order.status === 'pending' || order.status === 'accepted' ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={busyId === order._id}
+                        onClick={() => handleStatusChange(order._id, 'in_transit')}
+                      >
+                        🚚 Pick Up & Dispatch to Destination
+                      </button>
+                    ) : order.status === 'in_transit' ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={busyId === order._id}
+                        onClick={() => handleStatusChange(order._id, 'completed')}
+                      >
+                        ✅ Confirm Cargo Delivery Arrival
+                      </button>
                     ) : (
-                      <ReviewForm
-                        order={order}
-                        onSubmitted={() =>
-                          setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, reviewed: true } : o)))
-                        }
-                      />
+                      <span className="badge badge-accepted">✅ Delivered & Confirmed</span>
                     )}
+                    <Link
+                      to="/messages"
+                      className="btn btn-secondary btn-sm"
+                      style={{ textAlign: 'center', textDecoration: 'none', fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
+                    >
+                      💬 Coordinate Logistics
+                    </Link>
                   </div>
+                ) : (
+                  <>
+                    {/* Seller Actions (if current user is the seller/farmer) */}
+                    {!isOrderBuyer && order.status === 'pending' && (
+                      <div className="order-card-actions">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          disabled={busyId === order._id}
+                          onClick={() => handleStatusChange(order._id, 'accepted')}
+                        >
+                          Accept Order
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          disabled={busyId === order._id}
+                          onClick={() => handleStatusChange(order._id, 'declined')}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    )}
+
+                    {!isOrderBuyer && order.status === 'accepted' && (
+                      <div className="order-card-actions">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          disabled={busyId === order._id}
+                          onClick={() => handleStatusChange(order._id, 'in_transit')}
+                        >
+                          Dispatch & Ship 🚚
+                        </button>
+                      </div>
+                    )}
+
+                    {!isOrderBuyer && order.status === 'in_transit' && (
+                      <div className="order-card-actions">
+                        <span className="badge badge-escrow">Waiting for buyer receipt...</span>
+                      </div>
+                    )}
+
+                    {!isOrderBuyer && order.status === 'completed' && (
+                      <div className="order-card-actions">
+                        <span className="badge badge-accepted">Delivered & Funds Released 💰</span>
+                      </div>
+                    )}
+
+                    {/* Buyer Actions (if current user placed this order, whether farmer, buyer, or coop) */}
+                    {isOrderBuyer && (order.status === 'in_transit' || order.status === 'accepted') && (
+                      <div className="order-card-actions">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          disabled={busyId === order._id}
+                          onClick={() => handleStatusChange(order._id, 'completed')}
+                        >
+                          ✅ {t('confirmReceipt')} & Release Escrow
+                        </button>
+                      </div>
+                    )}
+
+                    {isOrderBuyer && order.status === 'pending' && (
+                      <div className="order-card-actions">
+                        <span className="badge badge-pending">Waiting for producer acceptance...</span>
+                      </div>
+                    )}
+
+                    {isOrderBuyer && order.status === 'completed' && (
+                      <div className="order-card-actions">
+                        {order.reviewed ? (
+                          <span className="badge badge-accepted">Reviewed ⭐</span>
+                        ) : (
+                          <ReviewForm
+                            order={order}
+                            onSubmitted={() =>
+                              setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, reviewed: true } : o)))
+                            }
+                          />
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             );

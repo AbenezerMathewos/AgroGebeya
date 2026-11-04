@@ -84,6 +84,22 @@ exports.createOrder = async (req, res) => {
       link: '/orders',
     });
 
+    // Notify registered freight transporters when delivery/cargo dispatch is requested
+    if (['delivery', 'freight_pool'].includes(fulfillment)) {
+      try {
+        const transporters = await User.find({ role: 'transporter' }).select('_id');
+        for (const t of transporters) {
+          await notifyUser(t._id, {
+            type: 'order_freight_dispatch',
+            message: `🚚 New Cargo Freight Needed: ${qty} ${product.unit || 'Kg'} of "${product.title}" to ${deliveryAddress?.city || 'destination'}.`,
+            link: '/orders',
+          });
+        }
+      } catch (notifErr) {
+        console.warn('Transporter notification error:', notifErr.message);
+      }
+    }
+
     res.status(201).json({ order });
   } catch (error) {
     res.status(500).json({ message: 'Could not create order request', error: error.message });
@@ -97,10 +113,23 @@ exports.createOrder = async (req, res) => {
 // ────────────────────────────────────────────────────────────────────────────
 exports.getMyOrders = async (req, res) => {
   try {
-    // Support filtering by ?type=purchases (orders placed) or ?type=sales (orders received)
-    // Default: return all orders where the user is either the buyer or the farmer
+    // Role-aware order visibility:
+    // - Admin: all orders across platform
+    // - Transporter: all orders requiring cargo freight / delivery dispatch or assigned to them
+    // - Buyer/Farmer: filtered by purchases or sales
     let filter;
-    if (req.query.type === 'purchases') {
+    if (req.user.role === 'admin') {
+      filter = {};
+    } else if (req.user.role === 'transporter') {
+      filter = {
+        $or: [
+          { fulfillment: { $in: ['delivery', 'freight_pool'] } },
+          { transporter: req.user._id },
+          { buyer: req.user._id },
+          { farmer: req.user._id },
+        ],
+      };
+    } else if (req.query.type === 'purchases') {
       filter = { buyer: req.user._id };
     } else if (req.query.type === 'sales') {
       filter = { farmer: req.user._id };
@@ -112,6 +141,7 @@ exports.getMyOrders = async (req, res) => {
       .populate('product', 'title price location images region zone grade')
       .populate('buyer',   'name phone email')
       .populate('farmer',  'name phone email cooperativeName')
+      .populate('transporter', 'name phone email')
       .sort({ createdAt: -1 });
 
     const reviewedIds = await Review.find({
@@ -122,9 +152,13 @@ exports.getMyOrders = async (req, res) => {
 
     const withFlag = orders.map((o) => {
       const isBuyer = String(o.buyer?._id || o.buyer) === String(req.user._id);
+      const isFarmer = String(o.farmer?._id || o.farmer) === String(req.user._id);
+      const isTransporter = req.user.role === 'transporter' || String(o.transporter?._id || o.transporter) === String(req.user._id);
       return {
         ...o.toObject(),
         isBuyer,
+        isFarmer,
+        isTransporter,
         reviewed: reviewedSet.has(String(o._id)),
       };
     });
@@ -137,23 +171,30 @@ exports.getMyOrders = async (req, res) => {
 
 // ────────────────────────────────────────────────────────────────────────────
 // @route   PATCH /api/orders/:id/status
-// @desc    Update order status (farmer accepts/ships/completes, buyer confirms)
-// @access  Private (farmer, buyer, admin)
+// @desc    Update order status (farmer accepts/ships/completes, transporter dispatches, buyer confirms)
+// @access  Private (farmer, buyer, transporter, admin)
 // ────────────────────────────────────────────────────────────────────────────
 exports.updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('product', 'title price')
       .populate('buyer',   'name')
-      .populate('farmer',  'name');
+      .populate('farmer',  'name')
+      .populate('transporter', 'name');
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    const isFarmer = order.farmer._id.toString() === req.user._id.toString();
-    const isBuyer  = order.buyer._id.toString()  === req.user._id.toString();
+    const isFarmer = order.farmer?._id?.toString() === req.user._id.toString();
+    const isBuyer  = order.buyer?._id?.toString()  === req.user._id.toString();
+    const isTransporter = req.user.role === 'transporter' || order.transporter?._id?.toString() === req.user._id.toString();
 
-    if (!isFarmer && !isBuyer && req.user.role !== 'admin') {
+    if (!isFarmer && !isBuyer && !isTransporter && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to update this order' });
+    }
+
+    // Automatically bind transporter when they accept or dispatch the shipment
+    if (isTransporter && !order.transporter) {
+      order.transporter = req.user._id;
     }
 
     const { status, paymentStatus } = req.body;
