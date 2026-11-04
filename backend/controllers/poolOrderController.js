@@ -76,7 +76,7 @@ exports.getOpenPools = async (req, res) => {
     if (region) filter.deliveryRegion = { $regex: region, $options: 'i' };
 
     const pools = await PoolOrder.find(filter)
-      .populate('buyer', 'name email cooperativeName region')
+      .populate('buyer', 'name email phone cooperativeName region')
       .populate('contributors.farmer', 'name phone region zone')
       .sort({ createdAt: -1 });
 
@@ -101,7 +101,7 @@ exports.getOpenPools = async (req, res) => {
 exports.getAllPools = async (req, res) => {
   try {
     const pools = await PoolOrder.find()
-      .populate('buyer', 'name email region')
+      .populate('buyer', 'name email phone cooperativeName region')
       .populate('contributors.farmer', 'name phone region zone')
       .sort({ createdAt: -1 });
 
