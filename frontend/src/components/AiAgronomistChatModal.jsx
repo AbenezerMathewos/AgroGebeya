@@ -36,6 +36,7 @@ export default function AiAgronomistChatModal() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const audioRef = useRef(null);
 
   // Sync default chat language with global language context
   useEffect(() => {
@@ -109,21 +110,90 @@ export default function AiAgronomistChatModal() {
     }
   };
 
-  // Text-To-Speech Read Aloud using Web Speech API
+  // Text-To-Speech Read Aloud supporting English, Amharic & Regional Languages
   const handleSpeakText = (text) => {
+    // If currently speaking or audio is playing, stop immediately
+    if (isSpeaking) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+      setIsSpeaking(false);
+      return;
+    }
+
+    const cleanText = (text || '').replace(/[*#_`]/g, '').trim();
+    if (!cleanText) return;
+
+    // Detect if text contains Ge'ez / Amharic characters (\u1200 - \u137F)
+    const isAmharic = /[\u1200-\u137F]/.test(cleanText);
+
+    if (isAmharic) {
+      // 1. Check if browser has a native Amharic TTS voice installed (e.g. Edge, Android)
+      const voices = 'speechSynthesis' in window ? window.speechSynthesis.getVoices() : [];
+      const amharicVoice = voices.find(
+        (v) => (v.lang && v.lang.toLowerCase().startsWith('am')) || (v.name && v.name.toLowerCase().includes('amharic'))
+      );
+
+      if (amharicVoice && 'speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.voice = amharicVoice;
+        utterance.lang = 'am-ET';
+        utterance.rate = 0.95;
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        setIsSpeaking(true);
+        window.speechSynthesis.speak(utterance);
+        return;
+      }
+
+      // 2. High-quality Native Amharic Audio Stream (Google TTS Engine fallback)
+      try {
+        const snippet = cleanText.length > 200 ? cleanText.substring(0, 195) + '...' : cleanText;
+        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=am&q=${encodeURIComponent(snippet)}`;
+        const audio = new Audio(ttsUrl);
+        audioRef.current = audio;
+
+        audio.onplay = () => setIsSpeaking(true);
+        audio.onended = () => {
+          setIsSpeaking(false);
+          audioRef.current = null;
+        };
+        audio.onerror = () => {
+          setIsSpeaking(false);
+          audioRef.current = null;
+          if ('speechSynthesis' in window) {
+            const fallbackUtterance = new SpeechSynthesisUtterance(cleanText);
+            fallbackUtterance.lang = 'am-ET';
+            fallbackUtterance.onend = () => setIsSpeaking(false);
+            fallbackUtterance.onerror = () => setIsSpeaking(false);
+            setIsSpeaking(true);
+            window.speechSynthesis.speak(fallbackUtterance);
+          }
+        };
+
+        audio.play().catch(() => {
+          setIsSpeaking(false);
+          audioRef.current = null;
+        });
+        return;
+      } catch (err) {
+        console.warn('Amharic audio playback fallback failed:', err);
+      }
+    }
+
+    // Default English / other regional languages
     if (!('speechSynthesis' in window)) {
       alert('Speech synthesis is not supported on your browser.');
       return;
     }
 
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-
-    const cleanText = text.replace(/[*#_`]/g, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = chatLang === 'om' ? 'om-ET' : chatLang === 'ti' ? 'ti-ET' : 'en-US';
     utterance.rate = 0.95;
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
@@ -189,7 +259,10 @@ export default function AiAgronomistChatModal() {
                 <button
                   type="button"
                   className="btn-chat-close"
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    if (isSpeaking) handleSpeakText('');
+                    setIsOpen(false);
+                  }}
                   title="Close Chat"
                 >
                   ✕
@@ -251,11 +324,11 @@ export default function AiAgronomistChatModal() {
                       {msg.role === 'assistant' && (
                         <button
                           type="button"
-                          className="btn-tts-listen"
+                          className={`btn-tts-listen ${isSpeaking ? 'active-speaking' : ''}`}
                           onClick={() => handleSpeakText(msg.text)}
                           title="Listen to this advisory aloud"
                         >
-                          🔊 Listen
+                          {isSpeaking ? '⏹️ Stop' : '🔊 Listen'}
                         </button>
                       )}
                     </div>

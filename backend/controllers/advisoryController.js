@@ -853,7 +853,7 @@ LANGUAGE DETECTION & RESPONSE RULES (HIGHEST PRIORITY)
 ═══════════════════════════════════════════════════════
 - If the farmer's question contains Wolayttatto Doonaa words (e.g. utta, badalla, qocho, goshshuwaa, malaadan, aayfe, gindiyaa, zariyaa, harggi, mittaa) OR the message is primarily in Wolayttatto Doonaa script: Respond ENTIRELY in fluent Wolayttatto Doonaa. Do NOT mix in English or Amharic except for scientific crop/disease names.
 - If the question is in Amharic (አማርኛ): Respond ENTIRELY in fluent, respectful Amharic.
-- If the question is in English: Respond in clear English with actionable advice, then append a brief "**Wolayttatto Maariyaa (Summary):**" section in Wolayttatto Doonaa at the end.
+- If the question is in English: Respond entirely in clear, professional English with practical, actionable advice.
 - For Afaan Oromoo, Tigrinya, or other Ethiopian languages detected: Respond in that language.
 - If the user's selected UI language is: ${targetLangPrompt}
 
@@ -985,8 +985,7 @@ ${cropContext ? `**Current Crop Context:** ${cropContext}` : ''}
         localReply = `☕ **Coffee Berry Disease (CBD) Advisory:**\n\n` +
           `1. **Organic:** Prune dense branches for sunlight; collect and burn/bury all mummified berries.\n` +
           `2. **Chemical:** Spray Copper Hydroxide 77% WP (Kocide 2000) @ 2.5 kg/ha in 500 L water before heavy rains.\n` +
-          `3. **Contact:** Jimma Agricultural Research Center (JARC) or call *8028#.\n\n` +
-          `**Wolayttatto Maariyaa:** Buuna hargguwaa (CBD) naagana mela: aanaara ciloo buunata xamqqidi caaccatta; kocide 2000 hektaareyyas 2.5 kg caaccatta.`;
+          `3. **Contact:** Jimma Agricultural Research Center (JARC) or call *8028#.`;
       }
 
     // ─── Enset / Gomere / Wilt ───────────────────────────────────────────────
@@ -1015,8 +1014,7 @@ ${cropContext ? `**Current Crop Context:** ${cropContext}` : ''}
           `2. **Uproot:** Immediately uproot infected enset and bury in deep pits away from waterways.\n` +
           `3. **Quarantine:** Fence the farm to prevent livestock from spreading the bacteria.\n` +
           `4. **Note:** There is NO chemical cure — strict phytosanitation is the ONLY solution.\n` +
-          `5. **Contact:** Areka Agricultural Research Center (WoraWora, Wolaita): +251 46 552 0110. Dial *8028#.\n\n` +
-          `**Wolayttatto Maariyaa:** Utta gomari (woshsho) naagana: qanxxiya tamman xoqissidite; harggida uttaa shoddidi kessidite. Kemikaale qori baawa.`;
+          `5. **Contact:** Areka Agricultural Research Center (WoraWora, Wolaita): +251 46 552 0110. Dial *8028#.`;
       }
 
     // ─── Maize / Fall Armyworm ────────────────────────────────────────────────
@@ -1040,8 +1038,7 @@ ${cropContext ? `**Current Crop Context:** ${cropContext}` : ''}
           `1. **Cultural:** Place dry fine wood ash + chili powder into the central whorl funnel of young maize.\n` +
           `2. **Push-Pull:** Intercrop with Desmodium (Silverleaf), border with Napier grass.\n` +
           `3. **Chemical:** Emamectin Benzoate 5% SG @ 250 g/ha directed into leaf funnel late afternoon.\n` +
-          `4. **Contact:** Hawassa / Bako Agricultural Research Center. Dial *8028#.\n\n` +
-          `**Wolayttatto Maariyaa:** Badallaa wozanaa mittaa binddaa wottite; Emamectin Benzoate 250g/ha gallasappe guyyiyan caaccatta.`;
+          `4. **Contact:** Hawassa / Bako Agricultural Research Center. Dial *8028#.`;
       }
 
     // ─── General greeting / fallback ─────────────────────────────────────────
@@ -1060,8 +1057,7 @@ ${cropContext ? `**Current Crop Context:** ${cropContext}` : ''}
           `- **Crops:** Teff (ጤፍ), Coffee (ቡና), Wheat (ስንዴ), Maize (በቆሎ), Enset (ቆጮ/ቡላ), Ginger, Avocado\n` +
           `- **Diseases:** Wheat Rust, Fall Armyworm, Coffee CBD, Enset Bacterial Wilt, Teff blast\n` +
           `- **Inputs:** MoA-approved fertilizers (NPS, Urea), organic remedies (wood ash, neem, compost)\n` +
-          `- **Contacts:** EIAR & Regional Research Centers | Free agricultural hotline: *8028#\n\n` +
-          `**Wolayttatto Maariyaa:** Utta, badalla, buuna, xaffi woy hara goshshaa harggiyan oychana danddaetteta.`;
+          `- **Contacts:** EIAR & Regional Research Centers | Free agricultural hotline: *8028#`;
       }
     }
 
