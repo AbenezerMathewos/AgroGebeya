@@ -60,13 +60,36 @@ export default function ChatWindow({ conversation, onMessageSent }) {
 
   if (!conversation) return null;
 
-  const otherParty = user.role === 'farmer' ? conversation.buyer : conversation.farmer;
+  const currentUid = (user?._id || user?.id)?.toString();
+  const buyerUid = (conversation.buyer?._id || conversation.buyer)?.toString();
+  const otherParty = buyerUid === currentUid ? conversation.farmer : conversation.buyer;
+
+  const roleEmoji =
+    otherParty?.role === 'farmer'
+      ? '🧑‍🌾'
+      : otherParty?.role === 'cooperative'
+      ? '🤝'
+      : otherParty?.role === 'transporter'
+      ? '🚚'
+      : otherParty?.role === 'buyer'
+      ? '🏢'
+      : '👤';
+
+  const subtitle =
+    conversation.product?.title ||
+    (otherParty?.cooperativeName
+      ? `${otherParty.cooperativeName} • Direct Logistics`
+      : otherParty?.role
+      ? `${otherParty.role.toUpperCase()} • Direct Freight & Cargo Coordination`
+      : 'Direct Freight & Trade Inquiries');
 
   return (
     <div className="chat-window">
       <div className="chat-window-heading">
-        <strong>{otherParty?.name}</strong>
-        <span>{conversation.product?.title}</span>
+        <strong>
+          {roleEmoji} {otherParty?.name || 'Trade Partner'}
+        </strong>
+        <span>{subtitle}</span>
       </div>
 
       <div className="chat-messages">

@@ -1,6 +1,7 @@
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const notifyUser = require('../utils/notify');
 const { getIO } = require('../socket');
 
@@ -47,8 +48,8 @@ exports.getMyConversations = async (req, res) => {
     const filter = { $or: [{ buyer: req.user._id }, { farmer: req.user._id }] };
     const conversations = await Conversation.find(filter)
       .populate('product', 'title images')
-      .populate('buyer', 'name')
-      .populate('farmer', 'name')
+      .populate('buyer', 'name role cooperativeName phone')
+      .populate('farmer', 'name role cooperativeName phone')
       .sort({ lastMessageAt: -1 });
 
     const withUnread = await Promise.all(
@@ -130,5 +131,160 @@ exports.sendMessage = async (req, res) => {
     res.status(201).json({ message });
   } catch (error) {
     res.status(500).json({ message: 'Could not send message', error: error.message });
+  }
+};
+
+// Starts or gets a direct conversation between logged-in user and any user (recipientId)
+exports.startDirectConversation = async (req, res) => {
+  try {
+    const { recipientId, initialMessage, productId } = req.body;
+    if (!recipientId) return res.status(400).json({ message: 'Recipient ID is required' });
+
+    if (recipientId.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: 'You cannot message yourself' });
+    }
+
+    const recipient = await User.findById(recipientId);
+    if (!recipient) return res.status(404).json({ message: 'User not found' });
+
+    let conversation = await Conversation.findOne({
+      $or: [
+        { buyer: req.user._id, farmer: recipient._id },
+        { buyer: recipient._id, farmer: req.user._id },
+      ],
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        buyer: req.user._id,
+        farmer: recipient._id,
+        product: productId || null,
+        lastMessage: initialMessage ? initialMessage.trim() : '',
+        lastMessageAt: new Date(),
+      });
+
+      if (initialMessage && initialMessage.trim()) {
+        await Message.create({
+          conversation: conversation._id,
+          sender: req.user._id,
+          text: initialMessage.trim(),
+          readBy: [req.user._id],
+        });
+      }
+    } else if (initialMessage && initialMessage.trim()) {
+      const msg = await Message.create({
+        conversation: conversation._id,
+        sender: req.user._id,
+        text: initialMessage.trim(),
+        readBy: [req.user._id],
+      });
+      conversation.lastMessage = msg.text;
+      conversation.lastMessageAt = msg.createdAt;
+      await conversation.save();
+    }
+
+    conversation = await conversation.populate([
+      { path: 'product', select: 'title images' },
+      { path: 'buyer', select: 'name role cooperativeName phone' },
+      { path: 'farmer', select: 'name role cooperativeName phone' },
+    ]);
+
+    res.status(201).json({ conversation });
+  } catch (error) {
+    res.status(500).json({ message: 'Could not start direct conversation', error: error.message });
+  }
+};
+
+// Returns available verified actors (farmers, cooperatives, buyers, transporters) to start chats with
+exports.getChatContacts = async (req, res) => {
+  try {
+    let users = await User.find({
+      _id: { $ne: req.user._id },
+      role: { $in: ['farmer', 'cooperative', 'buyer', 'transporter'] },
+    })
+      .select('name role cooperativeName phone region zone woreda email')
+      .sort({ role: 1, name: 1 })
+      .limit(30);
+
+    // Auto-seed key Ethiopian actors if the database is newly initialized
+    if (users.length < 3) {
+      const bcrypt = require('bcryptjs');
+      const SEED_PROFILES = [
+        {
+          name: 'Alemu Wolde',
+          email: 'farmer@agrogebeya.et',
+          role: 'farmer',
+          phone: '+251912345678',
+          region: 'South Ethiopia',
+          zone: 'Wolaita',
+          woreda: 'Sodo Zuria',
+          cooperativeName: 'Wolaita Smallholders Union',
+          preferredLanguage: 'wot',
+        },
+        {
+          name: 'Tadesse Mengesha (Coop Manager)',
+          email: 'cooperative@agrogebeya.et',
+          role: 'cooperative',
+          phone: '+251933445566',
+          region: 'Amhara',
+          zone: 'West Gojjam',
+          woreda: 'Bahir Dar Zuria',
+          cooperativeName: 'Gojjam Union Grain Pool',
+          preferredLanguage: 'am',
+        },
+        {
+          name: 'Marta Bekele (Wholesale Grain Merchant)',
+          email: 'buyer@agrogebeya.et',
+          role: 'buyer',
+          phone: '+251911223344',
+          region: 'Addis Ababa',
+          zone: 'Addis Ababa',
+          cooperativeName: 'Addis Grain Commercial Depot',
+          preferredLanguage: 'am',
+        },
+        {
+          name: 'Girma Desta (Transporter)',
+          email: 'transporter@agrogebeya.et',
+          role: 'transporter',
+          phone: '+251944556677',
+          region: 'South Ethiopia',
+          zone: 'Wolaita',
+          cooperativeName: 'Ethio-Freight Logistics Union',
+          preferredLanguage: 'am',
+        },
+        {
+          name: 'Dawit Kebede (Food Processing Enterprise)',
+          email: 'dawit@agrogebeya.et',
+          role: 'buyer',
+          phone: '+251955667788',
+          region: 'Oromia',
+          zone: 'East Shewa',
+          woreda: 'Adama',
+          cooperativeName: 'East Shewa Grain Aggregation',
+          preferredLanguage: 'om',
+        },
+      ];
+
+      for (const p of SEED_PROFILES) {
+        const exists = await User.findOne({ email: p.email });
+        if (!exists) {
+          const salt = await bcrypt.genSalt(10);
+          const hash = await bcrypt.hash('Farmer123456', salt);
+          await User.create({ ...p, password: hash });
+        }
+      }
+
+      users = await User.find({
+        _id: { $ne: req.user._id },
+        role: { $in: ['farmer', 'cooperative', 'buyer', 'transporter'] },
+      })
+        .select('name role cooperativeName phone region zone woreda email')
+        .sort({ role: 1, name: 1 })
+        .limit(30);
+    }
+
+    res.json({ contacts: users });
+  } catch (error) {
+    res.status(500).json({ message: 'Could not load contacts', error: error.message });
   }
 };

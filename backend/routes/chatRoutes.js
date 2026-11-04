@@ -3,6 +3,8 @@ const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const {
   startOrGetConversation,
+  startDirectConversation,
+  getChatContacts,
   getMyConversations,
   getMessages,
   sendMessage,
@@ -12,6 +14,8 @@ const {
 router.use(protect);
 
 router.post('/conversations', startOrGetConversation);
+router.post('/direct', startDirectConversation);
+router.get('/contacts', getChatContacts);
 router.get('/conversations', getMyConversations);
 router.get('/conversations/:id/messages', getMessages);
 router.post('/conversations/:id/messages', sendMessage);

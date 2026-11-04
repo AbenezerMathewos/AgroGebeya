@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { orderService } from '../services/orderService';
@@ -229,6 +229,18 @@ export default function OrderPanel({ product }) {
           <p className={messageType === 'error' ? 'inline-message error' : 'inline-message success'}>
             {message}
           </p>
+        )}
+
+        {createdOrder && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <Link
+              to="/orders"
+              className="btn btn-secondary btn-block"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 600 }}
+            >
+              📦 View & Track Order Status &rarr;
+            </Link>
+          </div>
         )}
       </form>
 

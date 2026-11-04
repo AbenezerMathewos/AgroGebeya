@@ -13,7 +13,11 @@ const DEMO_USERS = [
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  // Automatically pre-filled with Farmer by default for easy demo video recording
+  const [formData, setFormData] = useState({
+    email: 'farmer@agrogebeya.et',
+    password: 'Farmer123456',
+  });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 

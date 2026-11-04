@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCurrencyUnit } from '../context/CurrencyUnitContext';
 import { freightService } from '../services/freightService';
 import { poolService } from '../services/poolService';
+import { chatService } from '../services/chatService';
 
 const emptyTripForm = {
   driverName: '',
@@ -23,6 +24,7 @@ const emptyTripForm = {
 
 export default function TransporterDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { formatPrice } = useCurrencyUnit();
 
   const [trips, setTrips] = useState([]);
@@ -32,6 +34,9 @@ export default function TransporterDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [contactingPool, setContactingPool] = useState(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
+  const [chatStarting, setChatStarting] = useState(false);
 
   // Trip Creation Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,6 +47,31 @@ export default function TransporterDashboard() {
   });
   const [submittingTrip, setSubmittingTrip] = useState(false);
   const [updatingTripId, setUpdatingTripId] = useState(null);
+
+  const handleStartChatWithBuyer = async (pool) => {
+    try {
+      setChatStarting(true);
+      const recipientId = pool.buyer?._id || pool.buyer?.id || pool.buyer;
+      const initialGreeting = `Hello ${pool.buyer?.name || 'Partner'}, I am reviewing your freight contract for "${pool.cropName}" (${pool.currentQuantity || 0}/${pool.targetQuantity} ${pool.unit || 'Quintals'}) to ${pool.deliveryRegion || 'destination'}. I have active truck capacity available and can arrange dispatch.`;
+      
+      const res = await chatService.startDirectConversation(
+        recipientId,
+        initialGreeting,
+        pool.product?._id || pool.product || undefined
+      );
+
+      if (res?.conversation?._id) {
+        navigate(`/messages/${res.conversation._id}`);
+      } else {
+        navigate('/messages');
+      }
+    } catch (err) {
+      console.error('Error starting chat with buyer:', err);
+      navigate('/messages');
+    } finally {
+      setChatStarting(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -247,24 +277,28 @@ export default function TransporterDashboard() {
       {/* Tab 1: My Trips */}
       {activeTab === 'trips' && (
         <div>
-          {/* Filter Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--slate-400)' }}>Filter by Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color, #475569)', background: 'var(--card-bg, #1e293b)', color: 'inherit' }}
-              >
-                <option value="all">All Trips</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="in_transit">En Route (In Transit)</option>
-                <option value="full">Capacity Full</option>
-                <option value="completed">Delivered</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+          {/* Filter Bar with Modern High-Contrast Pills */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div className="orders-status-filters" style={{ margin: 0, gap: '0.45rem' }}>
+              {[
+                { id: 'all', label: 'All Trips' },
+                { id: 'scheduled', label: 'Scheduled' },
+                { id: 'in_transit', label: 'En Route' },
+                { id: 'full', label: 'Capacity Full' },
+                { id: 'completed', label: 'Delivered' },
+                { id: 'cancelled', label: 'Cancelled' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`orders-filter-pill ${statusFilter === item.id ? 'active' : ''}`}
+                  onClick={() => setStatusFilter(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
-            <button onClick={loadData} className="btn btn-ghost btn-sm" title="Refresh">
+            <button onClick={loadData} className="btn btn-secondary btn-sm" title="Refresh">
               🔄 Refresh
             </button>
           </div>
@@ -472,9 +506,33 @@ export default function TransporterDashboard() {
                     <span style={{ fontSize: '0.8rem', color: '#10b981' }}>
                       {p.currentQuantity} / {p.targetQuantity} Qtl Aggregated
                     </span>
-                    <Link to="/messages" className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem' }}>
-                      Contact Buyer
-                    </Link>
+                    <div style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={chatStarting}
+                        style={{
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          padding: '0.35rem 0.75rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                        }}
+                        onClick={() => handleStartChatWithBuyer(p)}
+                        title="Start instant live chat inquiry with this buyer"
+                      >
+                        💬 Chat
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        style={{ fontSize: '0.78rem', fontWeight: 600, padding: '0.35rem 0.75rem' }}
+                        onClick={() => setContactingPool(p)}
+                      >
+                        📞 Contact Buyer
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -727,6 +785,162 @@ export default function TransporterDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Buyer & Freight Coordination Modal */}
+      {contactingPool && (
+        <div className="modal-backdrop">
+          <div className="modal-content" style={{ maxWidth: '520px', width: '92%' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span style={{ fontSize: '1.4rem' }}>📦</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Freight Dispatch & Buyer Contact</h3>
+                  <small style={{ color: 'var(--text-muted, #64748b)' }}>Direct coordination for institutional bulk cargo</small>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setContactingPool(null);
+                  setCopiedMessage(false);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem 0' }}>
+              {/* Cargo Snapshot */}
+              <div style={{
+                background: 'var(--bg-main, #f8fafc)',
+                border: '1px solid var(--border-color, #e2e8f0)',
+                borderRadius: '10px',
+                padding: '0.9rem 1rem',
+                marginBottom: '1.2rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <strong style={{ fontSize: '1rem', color: 'var(--forest-800, #065f46)' }}>
+                    🌾 {contactingPool.cropName}
+                  </strong>
+                  <span style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: '20px',
+                    background: '#e0f2fe',
+                    color: '#0369a1'
+                  }}>
+                    {contactingPool.targetQuantity} {contactingPool.unit || 'Quintals'} Target
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-main, #334155)', display: 'grid', gap: '0.25rem' }}>
+                  <div>📍 Destination: <strong>{contactingPool.deliveryRegion || 'Addis Ababa'}</strong></div>
+                  <div>⚖️ Progress: <strong style={{ color: '#10b981' }}>{contactingPool.currentQuantity} Qtl Aggregated in Depot</strong></div>
+                </div>
+              </div>
+
+              {/* Verified Buyer Contact Card */}
+              <div style={{
+                border: '1.5px solid var(--forest-200, #a7f3d0)',
+                background: 'var(--card-bg, #ffffff)',
+                borderRadius: '10px',
+                padding: '1rem',
+                marginBottom: '1.2rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '1.5rem' }}>🏢</span>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{contactingPool.buyer?.name || 'Institutional Procurement Buyer'}</h4>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #64748b)' }}>
+                      {contactingPool.buyer?.cooperativeName || 'Verified Institutional Buyer'} &bull; {contactingPool.buyer?.region || 'Ethiopia'}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gap: '0.6rem' }}>
+                  {/* Phone Call Button */}
+                  <a
+                    href={`tel:${contactingPool.buyer?.phone || '+251911223344'}`}
+                    className="btn btn-primary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      textDecoration: 'none',
+                      fontSize: '0.9rem',
+                      padding: '0.65rem'
+                    }}
+                  >
+                    📞 Call Buyer Directly: {contactingPool.buyer?.phone || '+251 91 122 3344'}
+                  </a>
+
+                  {/* Email Button */}
+                  <a
+                    href={`mailto:${contactingPool.buyer?.email || 'buyer@agrogebeya.et'}?subject=Freight%20Hauling%20Offer%20for%20${encodeURIComponent(contactingPool.cropName)}`}
+                    className="btn btn-secondary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      textDecoration: 'none',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    ✉️ Email: {contactingPool.buyer?.email || 'buyer@agrogebeya.et'}
+                  </a>
+                </div>
+              </div>
+
+              {/* Ready-to-Send Dispatch Message */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-muted, #64748b)' }}>
+                  💬 Quick Dispatch Inquiry (Ready to send or SMS):
+                </label>
+                <div style={{
+                  background: 'var(--bg-main, #f1f5f9)',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  fontSize: '0.82rem',
+                  color: 'var(--text-main, #1e293b)',
+                  border: '1px solid var(--border-color, #cbd5e1)',
+                  marginBottom: '0.6rem'
+                }}>
+                  "Hello {contactingPool.buyer?.name || 'Buyer'}, I am {user?.name || 'Girma Desta'} from AgroGebeya Freight Fleet. I have truck capacity available along your delivery corridor for the {contactingPool.targetQuantity} Quintals of {contactingPool.cropName} to {contactingPool.deliveryRegion || 'destination'}. Let's coordinate pickup."
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{ width: '100%', fontSize: '0.8rem' }}
+                  onClick={() => {
+                    const text = `Hello ${contactingPool.buyer?.name || 'Buyer'}, I am ${user?.name || 'Girma Desta'} from AgroGebeya Freight Fleet. I have truck capacity available for your ${contactingPool.targetQuantity} Quintals of ${contactingPool.cropName} to ${contactingPool.deliveryRegion || 'destination'}.`;
+                    navigator.clipboard.writeText(text);
+                    setCopiedMessage(true);
+                    setTimeout(() => setCopiedMessage(false), 3000);
+                  }}
+                >
+                  {copiedMessage ? '✅ Copied to Clipboard!' : '📋 Copy Freight Dispatch Inquiry to Clipboard'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setContactingPool(null);
+                  setCopiedMessage(false);
+                }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
